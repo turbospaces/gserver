@@ -1,13 +1,13 @@
 package com.katesoft.gserver.transport;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundByteHandlerAdapter;
+import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.Future;
 
 import java.io.Closeable;
 
@@ -15,26 +15,29 @@ import org.jasypt.util.text.BasicTextEncryptor;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Supplier;
-import com.katesoft.gserver.core.UserConnection;
+import com.katesoft.gserver.api.UserConnection;
+import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.misc.Misc;
 
-class RootHandler extends ChannelInboundByteHandlerAdapter implements Closeable, Supplier<ChannelGroup> {
+class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseCommand> implements Closeable, Supplier<ChannelGroup> {
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
 
     private final ChannelGroup connections = new DefaultChannelGroup();
+    private final MessageListener eventBus;
 
+    RootDispatchHandler(MessageListener ml) {
+        this.eventBus = ml;
+    }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
         SocketChannel ch = (SocketChannel) ctx.pipeline().channel();
-        SocketUserConnection uc = new SocketUserConnection( ch );
+        SocketUserConnection uc = new SocketUserConnection( ch, connections );
         ch.attr( USER_CONNECTION_ATTR ).set( uc );
         connections.add( ch );
     }
     @Override
-    protected void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) {
-        ByteBuf out = ctx.nextOutboundByteBuffer();
-        out.writeBytes( in );
-        ctx.flush();
+    public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) throws Exception {
+        eventBus.onMessage( cmd, ctx.channel().attr( USER_CONNECTION_ATTR ).get() );
     }
     @Override
     public void close() {
@@ -60,8 +63,12 @@ class RootHandler extends ChannelInboundByteHandlerAdapter implements Closeable,
             ENCRYPTOR.setPassword( SocketUserConnection.class.getSimpleName() );
         }
         private final String id;
+        private final SocketChannel ch;
+        private final ChannelGroup connections;
 
-        public SocketUserConnection(SocketChannel ch) {
+        public SocketUserConnection(SocketChannel ch, ChannelGroup connections) {
+            this.ch = ch;
+            this.connections = connections;
             this.id = encodeId( ch );
         }
         @Override
@@ -84,6 +91,22 @@ class RootHandler extends ChannelInboundByteHandlerAdapter implements Closeable,
         private static Integer decodeId(String id) {
             String[] items = ENCRYPTOR.decrypt( id ).split( ":" );
             return Integer.parseInt( items[1] );
+        }
+        @Override
+        public Future<Void> writeAsync(Object message) {
+            return ch.write( message );
+        }
+        @Override
+        public void writeSync(Object message) throws InterruptedException {
+            writeAsync( message ).await();
+        }
+        @Override
+        public Future<Void> writeAllAsync(Object message) {
+            return connections.write( message );
+        }
+        @Override
+        public void close() {
+            ch.close().awaitUninterruptibly();
         }
     }
 }

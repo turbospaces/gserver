@@ -4,7 +4,11 @@
     <groupId>com.katesoft</groupId>
     <artifactId>gserver</artifactId>
     <version>0.1-SNAPSHOT</version>
+
     <inceptionYear>2013</inceptionYear>
+    <scm>
+        <connection>scm:git:https://github.com/turbospaces/gserver.git</connection>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -25,6 +29,8 @@
         <mockito.version>1.9.5</mockito.version>
         <junit-benchmarks.version>0.6.0</junit-benchmarks.version>
 
+        <protobuf.version>2.5.0</protobuf.version>
+        <jasypt.version>1.9.0</jasypt.version>
         <netty.version>4.0.0.CR3</netty.version>
         <javassist.version>3.17.1-GA</javassist.version>
 
@@ -43,9 +49,15 @@
         <maven.plugin.build-helper.version>1.7</maven.plugin.build-helper.version>
         <maven.plugin.buildnumber-version>1.1</maven.plugin.buildnumber-version>
         <maven.plugin.properties.version>1.0-alpha-2</maven.plugin.properties.version>
+        <maven.plugin.protobuf.version>0.6.3</maven.plugin.protobuf.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-transport</artifactId>
@@ -54,6 +66,11 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec</artifactId>
             <version>${netty.version}</version>
         </dependency>
         <dependency>
@@ -69,7 +86,7 @@
         <dependency>
             <groupId>org.jasypt</groupId>
             <artifactId>jasypt</artifactId>
-            <version>1.9.0</version>
+            <version>${jasypt.version}</version>
         </dependency>
 
         <dependency>
@@ -146,12 +163,72 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>com.github.igor-petruk.protobuf</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>${maven.plugin.protobuf.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>${maven.plugin.build-helper.version}</version>
+                <executions>
+                    <execution>
+                        <id>maven-version</id>
+                        <goals>
+                            <goal>maven-version</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>parse-version</id>
+                        <goals>
+                            <goal>parse-version</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.plugin.compiler.version}</version>
                 <configuration>
                     <source>1.6</source>
                     <target>1.6</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>${maven.plugin.buildnumber-version}</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
                 </configuration>
             </plugin>
             <plugin>
@@ -203,40 +280,6 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- plugin> <groupId>org.codehaus.mojo</groupId> <artifactId>buildnumber-maven-plugin</artifactId> <version>${maven.plugin.buildnumber-version}</version> 
-                <executions> <execution> <phase>validate</phase> <goals> <goal>create</goal> </goals> </execution> </executions> <configuration> 
-                <doCheck>false</doCheck> <doUpdate>false</doUpdate> </configuration> </plugin -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>${maven.plugin.build-helper.version}</version>
-                <executions>
-                    <execution>
-                        <id>maven-version</id>
-                        <goals>
-                            <goal>maven-version</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>parse-version</id>
-                        <goals>
-                            <goal>parse-version</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>add-source</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>${project.build.directory}/generated-sources/java</source>
-                            </sources>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

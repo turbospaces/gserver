@@ -5,10 +5,15 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.protobuf.ProtobufDecoder;
+import io.netty.handler.codec.protobuf.ProtobufEncoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
@@ -18,18 +23,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
-import com.katesoft.gserver.core.TransportServer;
-import com.katesoft.gserver.core.UserConnection;
+import com.google.protobuf.ExtensionRegistry;
+import com.katesoft.gserver.api.TransportServer;
+import com.katesoft.gserver.api.UserConnection;
+import com.katesoft.gserver.commands.Commands;
 import com.katesoft.gserver.misc.Misc;
 
 public class NettyServer implements TransportServer {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
-    private final RootHandler root = new RootHandler();
+    private RootDispatchHandler root;
 
     @Override
-    public void startServer(final HostAndPort binding) {
+    public void startServer(final HostAndPort binding, MessageListener rootMessageListener) {
+        root = new RootDispatchHandler( rootMessageListener );
+
+        final ExtensionRegistry registry = ExtensionRegistry.newInstance();
+        Commands.registerAllExtensions( registry );
+
         final ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap
                 .group( eventGroup )
@@ -38,7 +50,8 @@ public class NettyServer implements TransportServer {
                 .childHandler( new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast( root );
+                        ChannelPipeline p = ch.pipeline();
+                        registerProtobufCodecs( p, registry ).addLast( root );
                     }
                 } );
 
@@ -86,5 +99,13 @@ public class NettyServer implements TransportServer {
             }
             sleepUninterruptibly( 1, MILLISECONDS );
         }
+    }
+    public static ChannelPipeline registerProtobufCodecs(ChannelPipeline p, ExtensionRegistry registry) {
+        p.addLast( "frameDecoder", new ProtobufVarint32FrameDecoder() );
+        p.addLast( "protobufDecoder", new ProtobufDecoder( Commands.BaseCommand.getDefaultInstance(), registry ) );
+
+        p.addLast( "frameEncoder", new ProtobufVarint32LengthFieldPrepender() );
+        p.addLast( "protobufEncoder", new ProtobufEncoder() );
+        return p;
     }
 }

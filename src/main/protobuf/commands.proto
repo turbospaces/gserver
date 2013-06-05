@@ -1,0 +1,39 @@
+package gserver.commands;
+
+option java_package = "com.katesoft.gserver.commands";
+option java_outer_classname = "Commands";
+//
+message MessageHeaders {
+	required string correlationID = 1;
+	required int64 sequenceNumber = 2;
+	required int64 messageTimestamp = 3;
+}
+
+message BaseCommand {
+	extensions 100 to max;
+
+	required string qualifier = 1;
+	required MessageHeaders headers = 2;
+	required string protocolVersion = 3;
+}
+
+message LoginCommand {
+	extend BaseCommand {
+		required LoginCommand cmd = 100;
+	}
+	required string playerId = 1;
+	required string token = 2;
+}
+
+message LogoutCommand {
+	extend BaseCommand {
+		required LogoutCommand cmd = 101;
+	}
+}
+
+message Player {
+	required string userID = 1;
+	optional string displayName = 5;
+	optional string email = 6;
+}
+
