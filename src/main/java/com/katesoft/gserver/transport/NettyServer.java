@@ -1,6 +1,9 @@
 package com.katesoft.gserver.transport;
 
+import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -9,10 +12,11 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
+import java.net.SocketAddress;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Optional;
 import com.google.common.net.HostAndPort;
 import com.katesoft.gserver.core.TransportServer;
 import com.katesoft.gserver.core.UserConnection;
@@ -30,10 +34,11 @@ public class NettyServer implements TransportServer {
         bootstrap
                 .group( eventGroup )
                 .channel( NioServerSocketChannel.class )
+                .handler( new LoggingHandler( LogLevel.DEBUG ) )
                 .childHandler( new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast( new LoggingHandler( LogLevel.DEBUG ), root );
+                        ch.pipeline().addLast( root );
                     }
                 } );
 
@@ -63,12 +68,23 @@ public class NettyServer implements TransportServer {
         logger.info( "Closed Netty Acceptor in = {} ms", took );
     }
     @Override
-    public Optional<UserConnection> find(String id) {
-        return Optional.of( root.find( id ) );
+    public UserConnection getUserConnection(String id) {
+        return root.find( id );
     }
     @Override
     public int connectionsCount() {
-        return root.connections.size();
+        return root.get().size();
     }
-    public void awaitForHandshake(NettyTcpClient client) {}
+    public UserConnection awaitForHandshake(NettyTcpClient client) {
+        SocketChannel sch = client.get();
+        for ( ;; ) {
+            for ( Channel c : root.get() ) {
+                SocketAddress remoteAddress = c.remoteAddress();
+                if ( sch.localAddress().equals( remoteAddress ) ) {
+                    return root.find( (SocketChannel) c );
+                }
+            }
+            sleepUninterruptibly( 1, MILLISECONDS );
+        }
+    }
 }

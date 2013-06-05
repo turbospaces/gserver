@@ -1,7 +1,5 @@
 package com.katesoft.gserver.misc;
 
-import static java.lang.System.currentTimeMillis;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -54,7 +52,6 @@ public abstract class Misc {
     public static final Charset UTF_8 = Charset.forName( "UTF-8" );
     public static final String IPv4 = "java.net.preferIPv4Stack";
     public static final int MEGABYTE = 1 << 20;
-    public static final String UNIQUE_PREFIX = Joiner.on( ":" ).join( shortHostname(), getPid(), currentTimeMillis() );
 
     static {
         try {
