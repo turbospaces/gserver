@@ -1,5 +1,8 @@
 package com.katesoft.gserver.transport;
 
+import static com.google.common.base.Objects.toStringHelper;
+import static com.katesoft.gserver.misc.Misc.getPid;
+import static java.lang.System.currentTimeMillis;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
@@ -10,22 +13,21 @@ import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 
 import java.io.Closeable;
+import java.util.Date;
 
 import org.jasypt.util.text.BasicTextEncryptor;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Supplier;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
-import com.katesoft.gserver.misc.Misc;
 
 class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseCommand> implements Closeable, Supplier<ChannelGroup> {
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
 
     private final ChannelGroup connections = new DefaultChannelGroup();
-    private final MessageListener eventBus;
+    private final TransportMessageListener eventBus;
 
-    RootDispatchHandler(MessageListener ml) {
+    RootDispatchHandler(TransportMessageListener ml) {
         this.eventBus = ml;
     }
     @Override
@@ -37,7 +39,9 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
     }
     @Override
     public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) throws Exception {
-        eventBus.onMessage( cmd, ctx.channel().attr( USER_CONNECTION_ATTR ).get() );
+    	SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
+    	userConnection.lastActivity = System.currentTimeMillis();
+        eventBus.onMessage( cmd, userConnection );
     }
     @Override
     public void close() {
@@ -65,6 +69,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         private final String id;
         private final SocketChannel ch;
         private final ChannelGroup connections;
+        private long lastActivity;
 
         public SocketUserConnection(SocketChannel ch, ChannelGroup connections) {
             this.ch = ch;
@@ -77,7 +82,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         }
         @Override
         public String toString() {
-            return Objects.toStringHelper( this ).add( "id", id() ).toString();
+            return toStringHelper( this ).add( "id", id() ).add("accepted", new Date(socketAcceptTimestamp())).toString();
         }
         private static String encodeId(SocketChannel ch) {
             /**
@@ -85,7 +90,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
              * 2. netty socket connection id
              * 3. process id
              */
-            String id = System.currentTimeMillis() + ":" + ch.id() + ":" + Misc.getPid();
+            String id = currentTimeMillis() + ":" + ch.id() + ":" + getPid();
             return ENCRYPTOR.encrypt( id );
         }
         private static Integer decodeId(String id) {
@@ -105,6 +110,15 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
             return connections.write( message );
         }
         @Override
+		public long socketAcceptTimestamp() {
+        	String[] items = ENCRYPTOR.decrypt( id ).split( ":" );
+            return Long.parseLong( items[0] );
+		}
+		@Override
+		public long socketLastActivityTimestamp() {
+			return lastActivity;
+		}
+		@Override
         public void close() {
             ch.close().awaitUninterruptibly();
         }

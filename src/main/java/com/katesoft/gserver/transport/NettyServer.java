@@ -36,7 +36,7 @@ public class NettyServer implements TransportServer {
     private RootDispatchHandler root;
 
     @Override
-    public void startServer(final HostAndPort binding, MessageListener rootMessageListener) {
+    public void startServer(final HostAndPort binding, TransportMessageListener rootMessageListener) {
         root = new RootDispatchHandler( rootMessageListener );
 
         final ExtensionRegistry registry = ExtensionRegistry.newInstance();

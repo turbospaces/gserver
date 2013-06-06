@@ -13,7 +13,7 @@ import com.google.common.net.HostAndPort;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.misc.Misc;
-import com.katesoft.gserver.transport.MessageListener;
+import com.katesoft.gserver.transport.TransportMessageListener;
 import com.katesoft.gserver.transport.NettyServer;
 import com.katesoft.gserver.transport.NettyTcpClient;
 
@@ -24,7 +24,7 @@ public class NettyServerTest {
     public void x() throws InterruptedException, ExecutionException {
         HostAndPort hostAndPort = HostAndPort.fromParts( Misc.shortHostname(), Misc.nextAvailablePort() );
         NettyServer s = new NettyServer();
-        s.startServer( hostAndPort, new MessageListener.EchoMessageListener() );
+        s.startServer( hostAndPort, new TransportMessageListener.EchoMessageListener() );
 
         NettyTcpClient c = new NettyTcpClient( hostAndPort );
         c.run();
