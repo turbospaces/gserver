@@ -1,4 +1,4 @@
-package gserver.commands;
+package gserver;
 
 option java_package = "com.katesoft.gserver.commands";
 option java_outer_classname = "Commands";
@@ -11,10 +11,10 @@ message MessageHeaders {
 
 message BaseCommand {
 	extensions 100 to max;
-
 	required string qualifier = 1;
 	required MessageHeaders headers = 2;
 	required string protocolVersion = 3;
+	optional string sessionId = 4;
 }
 
 message LoginCommand {
@@ -22,7 +22,10 @@ message LoginCommand {
 		required LoginCommand cmd = 100;
 	}
 	required string playerId = 1;
-	required string token = 2;
+	required string credentials = 2;
+	required string clientPlatform = 3;
+	optional string lang = 4;
+	optional string sessionId = 5;
 }
 
 message LogoutCommand {
@@ -31,9 +34,23 @@ message LogoutCommand {
 	}
 }
 
-message Player {
-	required string userID = 1;
-	optional string displayName = 5;
-	optional string email = 6;
+enum Coin {
+	ONE = 1;
+	TWO = 2;
+	FIVE = 3;
+	TEN = 4;
+	TWENTY_FIVE = 5;
+	FIFTY = 6;
+	HUNDRED = 7;
 }
+
+message CoinQuantitySlice {
+	required Coin coin = 1;
+	required int32 quantity = 2;
+}
+
+message Bet {
+	repeated CoinQuantitySlice slices = 1;
+}
+
 

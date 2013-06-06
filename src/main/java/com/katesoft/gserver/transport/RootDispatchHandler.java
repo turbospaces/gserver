@@ -4,6 +4,7 @@ import static com.google.common.base.Objects.toStringHelper;
 import static com.katesoft.gserver.misc.Misc.getPid;
 import static java.lang.System.currentTimeMillis;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
@@ -21,6 +22,7 @@ import com.google.common.base.Supplier;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 
+@Sharable
 class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseCommand> implements Closeable, Supplier<ChannelGroup> {
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
 
@@ -39,8 +41,8 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
     }
     @Override
     public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) throws Exception {
-    	SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
-    	userConnection.lastActivity = System.currentTimeMillis();
+        SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
+        userConnection.lastActivity = System.currentTimeMillis();
         eventBus.onMessage( cmd, userConnection );
     }
     @Override
@@ -82,7 +84,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         }
         @Override
         public String toString() {
-            return toStringHelper( this ).add( "id", id() ).add("accepted", new Date(socketAcceptTimestamp())).toString();
+            return toStringHelper( this ).add( "id", id() ).add( "accepted", new Date( socketAcceptTimestamp() ) ).toString();
         }
         private static String encodeId(SocketChannel ch) {
             /**
@@ -110,15 +112,15 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
             return connections.write( message );
         }
         @Override
-		public long socketAcceptTimestamp() {
-        	String[] items = ENCRYPTOR.decrypt( id ).split( ":" );
+        public long socketAcceptTimestamp() {
+            String[] items = ENCRYPTOR.decrypt( id ).split( ":" );
             return Long.parseLong( items[0] );
-		}
-		@Override
-		public long socketLastActivityTimestamp() {
-			return lastActivity;
-		}
-		@Override
+        }
+        @Override
+        public long socketLastActivityTimestamp() {
+            return lastActivity;
+        }
+        @Override
         public void close() {
             ch.close().awaitUninterruptibly();
         }

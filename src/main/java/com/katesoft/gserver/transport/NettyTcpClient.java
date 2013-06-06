@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
@@ -30,7 +31,9 @@ import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.commands.Commands;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
+import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
+import com.katesoft.gserver.games.roullete.RoulleteCommands;
 
 public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
@@ -48,6 +51,7 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     public void run() {
         final ExtensionRegistry registry = ExtensionRegistry.newInstance();
         Commands.registerAllExtensions( registry );
+        RoulleteCommands.registerAllExtensions( registry );
 
         final CountDownLatch l = new CountDownLatch( 1 );
         Bootstrap b = new Bootstrap();
@@ -88,8 +92,9 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     public SocketChannel get() {
         return sch;
     }
-    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t) {
-        BaseCommand.Builder cmd = BaseCommand.newBuilder().setQualifier( t.getClass().getName() ).setExtension( extension, t );
+    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t,
+                                                          Optional<LoginCommand> loginCommand) {
+        BaseCommand.Builder cmd = BaseCommand.newBuilder().setQualifier( t.getClass().getSimpleName() ).setExtension( extension, t );
 
         long seqN = seq.incrementAndGet();
         MessageHeaders headers = MessageHeaders
@@ -99,6 +104,9 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                 .setSequenceNumber( seqN )
                 .build();
         cmd.setHeaders( headers ).setProtocolVersion( "1.0" );
+        if ( loginCommand.isPresent() ) {
+            cmd.setSessionId( loginCommand.get().getSessionId() );
+        }
 
         SettableFuture<BaseCommand> f = SettableFuture.create();
         corr.put( headers.getCorrelationID(), f );

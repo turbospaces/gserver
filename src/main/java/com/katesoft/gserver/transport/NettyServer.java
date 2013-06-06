@@ -10,10 +10,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
@@ -27,6 +27,7 @@ import com.google.protobuf.ExtensionRegistry;
 import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands;
+import com.katesoft.gserver.games.roullete.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
 
 public class NettyServer implements TransportServer {
@@ -41,6 +42,7 @@ public class NettyServer implements TransportServer {
 
         final ExtensionRegistry registry = ExtensionRegistry.newInstance();
         Commands.registerAllExtensions( registry );
+        RoulleteCommands.registerAllExtensions( registry );
 
         final ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap
@@ -101,11 +103,19 @@ public class NettyServer implements TransportServer {
         }
     }
     public static ChannelPipeline registerProtobufCodecs(ChannelPipeline p, ExtensionRegistry registry) {
-        p.addLast( "frameDecoder", new ProtobufVarint32FrameDecoder() );
+        p.addLast( "frameDecoder", new LengthFieldBasedFrameDecoder( 1048576, 0, 4, 0, 4 ) );
         p.addLast( "protobufDecoder", new ProtobufDecoder( Commands.BaseCommand.getDefaultInstance(), registry ) );
 
-        p.addLast( "frameEncoder", new ProtobufVarint32LengthFieldPrepender() );
+        p.addLast( "frameEncoder", new LengthFieldPrepender( 4 ) );
         p.addLast( "protobufEncoder", new ProtobufEncoder() );
         return p;
+    }
+    public static void main(String... args) throws InterruptedException {
+        NettyServer s = new NettyServer();
+        s.startServer( HostAndPort.fromParts( "localhost", 8189 ), new TransportMessageListener.EchoMessageListener() );
+        synchronized ( s ) {
+            s.wait();
+        }
+        s.close();
     }
 }
