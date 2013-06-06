@@ -15,10 +15,13 @@ import io.netty.util.concurrent.Future;
 
 import java.io.Closeable;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jasypt.util.text.BasicTextEncryptor;
 
 import com.google.common.base.Supplier;
+import com.google.common.util.concurrent.Atomics;
+import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 
@@ -72,6 +75,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         private final SocketChannel ch;
         private final ChannelGroup connections;
         private long lastActivity;
+        private final AtomicReference<Player> player = Atomics.newReference();
 
         public SocketUserConnection(SocketChannel ch, ChannelGroup connections) {
             this.ch = ch;
@@ -119,6 +123,16 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         @Override
         public long socketLastActivityTimestamp() {
             return lastActivity;
+        }
+        @Override
+        public Player asociatePlayer(Player p) {
+            Player prev = player.get();
+            player.compareAndSet( prev, p );
+            return prev;
+        }
+        @Override
+        public Player getAssociatedPlayer() {
+            return player.get();
         }
         @Override
         public void close() {

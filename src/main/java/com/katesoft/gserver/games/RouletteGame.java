@@ -13,11 +13,11 @@ import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GameCommandInterpreter;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
-import com.katesoft.gserver.core.BetWrapper;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinRequest;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
 

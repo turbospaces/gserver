@@ -1,4 +1,4 @@
-package com.katesoft.gserver.core;
+package com.katesoft.gserver.api;
 
 import com.katesoft.gserver.commands.Commands.Bet;
 import com.katesoft.gserver.commands.Commands.Coin;
