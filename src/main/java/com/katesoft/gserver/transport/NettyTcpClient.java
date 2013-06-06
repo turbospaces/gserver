@@ -13,6 +13,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.io.Closeable;
+import java.util.AbstractMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
@@ -29,16 +30,17 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
-import com.katesoft.gserver.commands.Commands;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
-import com.katesoft.gserver.games.roullete.RoulleteCommands;
+import com.katesoft.gserver.core.Commands;
+import com.katesoft.gserver.core.CommandsQualifierCodec;
 
 public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
     private final AtomicLong seq = new AtomicLong();
     private final ConcurrentMap<String, SettableFuture<BaseCommand>> corr = Maps.newConcurrentMap();
+    private final CommandsQualifierCodec.DefaultCommansResolver commandsCodec = new CommandsQualifierCodec.DefaultCommansResolver();
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
     private final HostAndPort hostAndPort;
     private SocketChannel sch;
@@ -49,12 +51,10 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     }
     @Override
     public void run() {
-        final ExtensionRegistry registry = ExtensionRegistry.newInstance();
-        Commands.registerAllExtensions( registry );
-        RoulleteCommands.registerAllExtensions( registry );
-
+        final ExtensionRegistry registry = Commands.newMessageRegistry();
         final CountDownLatch l = new CountDownLatch( 1 );
-        Bootstrap b = new Bootstrap();
+        final Bootstrap b = new Bootstrap();
+        
         b
                 .group( eventGroup )
                 .channel( NioSocketChannel.class )
@@ -92,9 +92,11 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     public SocketChannel get() {
         return sch;
     }
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t,
                                                           Optional<LoginCommand> loginCommand) {
-        BaseCommand.Builder cmd = BaseCommand.newBuilder().setQualifier( t.getClass().getSimpleName() ).setExtension( extension, t );
+        BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( extension, t );
+        commandsCodec.qualifierWriter().apply(new AbstractMap.SimpleEntry(cmd, t));
 
         long seqN = seq.incrementAndGet();
         MessageHeaders headers = MessageHeaders
