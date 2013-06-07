@@ -2,8 +2,6 @@ package com.katesoft.gserver.api;
 
 import java.io.Closeable;
 
-import com.katesoft.gserver.commands.Commands.BaseCommand;
-
 public interface Player extends Closeable {
     String id();
     String displayName();
@@ -14,5 +12,5 @@ public interface Player extends Closeable {
      */
     @Override
     void close();
-    void dispatchCommand(BaseCommand cmd);
+    void dispatchCommand(CommandWrapperEvent cmd);
 }

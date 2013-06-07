@@ -40,7 +40,7 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     private final Logger logger = LoggerFactory.getLogger( getClass() );
     private final AtomicLong seq = new AtomicLong();
     private final ConcurrentMap<String, SettableFuture<BaseCommand>> corr = Maps.newConcurrentMap();
-    private final CommandsQualifierCodec.DefaultCommansResolver commandsCodec = new CommandsQualifierCodec.DefaultCommansResolver();
+    private final CommandsQualifierCodec commandsCodec = CommandsQualifierCodec.DEFAULT.get();
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
     private final HostAndPort hostAndPort;
     private SocketChannel sch;

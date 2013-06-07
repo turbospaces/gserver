@@ -1,5 +1,6 @@
 package com.katesoft.gserver.core;
 
+import com.katesoft.gserver.api.CommandWrapperEvent;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
@@ -12,6 +13,7 @@ import com.katesoft.gserver.spi.GameControlService;
 import com.katesoft.gserver.transport.TransportMessageListener;
 
 public class MessageListenerDispatcher implements TransportMessageListener {
+	private CommandsQualifierCodec codec = new CommandsQualifierCodec.DefaultCommandsCodec();
     private AuthService authService;
     private GameControlService gameCtlService;
 
@@ -39,7 +41,7 @@ public class MessageListenerDispatcher implements TransportMessageListener {
         }
         else {
             Player player = userConnection.getAssociatedPlayer();
-            player.dispatchCommand( cmd );
+            player.dispatchCommand( new CommandWrapperEvent(cmd, codec) );
         }
     }
 }

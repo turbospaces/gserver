@@ -9,6 +9,8 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
@@ -19,10 +21,16 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
 public interface CommandsQualifierCodec extends Closeable {
+	Supplier<CommandsQualifierCodec> DEFAULT = Suppliers.memoize(new Supplier<CommandsQualifierCodec>() {
+		@Override
+		public CommandsQualifierCodec get() {
+			return new DefaultCommandsCodec();
+		}
+	});
     Function<String, Class<? extends GeneratedMessage>> qualifierToType();
     Function<Map.Entry<BaseCommand.Builder, Object>, BaseCommand.Builder> qualifierWriter();
 
-    public static final class DefaultCommansResolver implements CommandsQualifierCodec {
+    public static final class DefaultCommandsCodec implements CommandsQualifierCodec {
         private final ConcurrentMap<String, Class<?>> cache = Maps.newConcurrentMap();
         private final Function<String, Class<? extends GeneratedMessage>> from = new Function<String, Class<? extends GeneratedMessage>>() {
             @SuppressWarnings("unchecked")
@@ -43,7 +51,7 @@ public interface CommandsQualifierCodec extends Closeable {
                     }
                 };
 
-        public DefaultCommansResolver() {
+        public DefaultCommandsCodec() {
             try {
                 ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
                 ImmutableSet<ClassInfo> topLevelClasses = classPath.getTopLevelClasses();

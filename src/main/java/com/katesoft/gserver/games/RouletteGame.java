@@ -14,26 +14,24 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.katesoft.gserver.api.BetWrapper;
+import com.katesoft.gserver.api.CommandWrapperEvent;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GameCommandInterpreter;
-import com.katesoft.gserver.api.PlayerSession;
-import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinRequest;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
 
 public class RouletteGame extends Game.AbstractBlankGame {
     private static final Map<RoulleteBetPositions, PositionPayout> ALL = Maps.newHashMap();
-    private static final Map<Integer, Set<PositionPayout>> NUMS;
+    private static final Map<Integer, Set<PositionPayout>> NUMS = Maps.newHashMap();
 
     public RouletteGame() {
         super( "roulette" );
         interpreter = new GameCommandInterpreter() {
             @Override
-            public void interpretCommand(BaseCommand command, PlayerSession session) {
-                String qualifier = command.getQualifier();
+            public void interpretCommand(CommandWrapperEvent e) {
 
-                if ( RouletteSpinRequest.class.getSimpleName().equals( qualifier ) ) {
-                    RouletteSpinRequest spin = command.getExtension( RouletteSpinRequest.cmd );
+                if ( RouletteSpinRequest.class == e.cmdClass() ) {
+                    RouletteSpinRequest spin = e.getCmd().getExtension( RouletteSpinRequest.cmd );
 
                     int number = gamePlayContext.rng().nextInt( 37 ) - 1;
                     Set<PositionPayout> positions = NUMS.get( number );
@@ -224,7 +222,6 @@ public class RouletteGame extends Game.AbstractBlankGame {
         ALL.put( split_34_35, of( 17, asList( 34, 35 ), split_34_35 ) );
         ALL.put( split_35_36, of( 17, asList( 35, 36 ), split_35_36 ) );
 
-        NUMS = Maps.newHashMap();
         for ( int i = -1; i <= 36; i++ ) {
             NUMS.put( i, possiblePositionsFor( i ) );
         }

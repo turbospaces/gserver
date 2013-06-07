@@ -17,7 +17,7 @@ public class CommandsResolverTest {
     @Test
     public void works() {
         Commands.newMessageRegistry();
-        CommandsQualifierCodec.DefaultCommansResolver r = new CommandsQualifierCodec.DefaultCommansResolver();
+        CommandsQualifierCodec.DefaultCommandsCodec r = new CommandsQualifierCodec.DefaultCommandsCodec();
         LoginCommand logCmd = LoginCommand.newBuilder().setPlayerId("playerX").setCredentials("tokenX").setClientPlatform("flash").build();
         r.qualifierWriter().apply(new AbstractMap.SimpleEntry(BaseCommand.newBuilder(), logCmd));
         assertSame(LoginCommand.class, r.qualifierToType().apply(LoginCommand.class.getSimpleName()));
