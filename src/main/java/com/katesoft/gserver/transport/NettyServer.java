@@ -1,6 +1,7 @@
 package com.katesoft.gserver.transport;
 
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
+import static com.katesoft.gserver.misc.Misc.shortHostname;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -112,7 +113,7 @@ public class NettyServer implements TransportServer {
     }
     public static void main(String... args) throws InterruptedException {
         NettyServer s = new NettyServer();
-        s.startServer( HostAndPort.fromParts( "localhost", 8189 ), new TransportMessageListener.EchoMessageListener() );
+        s.startServer( HostAndPort.fromParts( shortHostname(), 8189 ), new TransportMessageListener.EchoMessageListener() );
         synchronized ( s ) {
             s.wait();
         }

@@ -21,17 +21,16 @@ import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinRequest;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
 
 public class RouletteGame extends Game.AbstractBlankGame {
-    private static final Map<RoulleteBetPositions, PositionPayout> ALL = Maps.newHashMap();
-    private static final Map<Integer, Set<PositionPayout>> NUMS = Maps.newHashMap();
+    static final Map<RoulleteBetPositions, PositionPayout> ALL = Maps.newHashMap();
+    static final Map<Integer, Set<PositionPayout>> NUMS = Maps.newHashMap();
 
     public RouletteGame() {
         super( "roulette" );
         interpreter = new GameCommandInterpreter() {
             @Override
             public void interpretCommand(CommandWrapperEvent e) {
-
                 if ( RouletteSpinRequest.class == e.cmdClass() ) {
-                    RouletteSpinRequest spin = e.getCmd().getExtension( RouletteSpinRequest.cmd );
+                    RouletteSpinRequest spin = e.getCmdForInterpretation().getExtension( RouletteSpinRequest.cmd );
 
                     int number = gamePlayContext.rng().nextInt( 37 ) - 1;
                     Set<PositionPayout> positions = NUMS.get( number );
@@ -55,6 +54,12 @@ public class RouletteGame extends Game.AbstractBlankGame {
             p.position = position;
 
             return p;
+        }
+        public int getPayout() {
+            return payout;
+        }
+        public RoulleteBetPositions getPosition() {
+            return position;
         }
         @Override
         public String toString() {
