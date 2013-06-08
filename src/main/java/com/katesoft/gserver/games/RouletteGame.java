@@ -21,11 +21,13 @@ import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinRequest;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
 
 public class RouletteGame extends Game.AbstractBlankGame {
+    public static final String ID = "roulette";
+    
     static final Map<RoulleteBetPositions, PositionPayout> ALL = Maps.newHashMap();
     static final Map<Integer, Set<PositionPayout>> NUMS = Maps.newHashMap();
 
     public RouletteGame() {
-        super( "roulette" );
+        super( ID );
         interpreter = new GameCommandInterpreter() {
             @Override
             public void interpretCommand(CommandWrapperEvent e) {

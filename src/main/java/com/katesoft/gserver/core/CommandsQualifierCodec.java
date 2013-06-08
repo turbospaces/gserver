@@ -37,7 +37,7 @@ public interface CommandsQualifierCodec extends Closeable {
             @Override
             public Class<? extends GeneratedMessage> apply(@Nullable String input) {
                 Class<?> clazz = cache.get(input);
-                Preconditions.checkNotNull(clazz);
+                Preconditions.checkNotNull(clazz, "Command=%s not registered", input);
                 return (Class<? extends GeneratedMessage>) clazz;
             }
         };

@@ -9,7 +9,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
-import java.nio.charset.Charset;
 import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -42,16 +41,12 @@ import com.sun.jna.Platform;
  */
 @SuppressWarnings("restriction")
 public abstract class Misc {
-    private static final Logger LOGGER = LoggerFactory.getLogger( Misc.class );
-    private static final Random RANDOM = new SecureRandom();
+    private static final Logger LOGGER = LoggerFactory.getLogger( Misc.class );    
     private static final sun.misc.Unsafe UNSAFE;
     private static final Range<Integer> FREE_PORT_SCAN_RANGE = Range.closed( 1 << 10, 1 << 14 );
 
     public static final String OS_USER = System.getProperty( "user.name" );
-    public static final Charset US_ASCII = Charset.forName( "US-ASCII" );
-    public static final Charset UTF_8 = Charset.forName( "UTF-8" );
-    public static final String IPv4 = "java.net.preferIPv4Stack";
-    public static final int MEGABYTE = 1 << 20;
+    public static final Random RANDOM = new SecureRandom();
 
     static {
         try {

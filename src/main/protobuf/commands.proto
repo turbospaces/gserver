@@ -28,10 +28,11 @@ message LoginCommand {
 	optional string sessionId = 5;
 }
 
-message LogoutCommand {
+message LoginCommandReply {
 	extend BaseCommand {
-		required LogoutCommand cmd = 101;
+		required LoginCommandReply cmd = 101;
 	}
+	required LoginCommand req = 1;
 }
 
 message OpenGamePlayCommand {
@@ -39,6 +40,22 @@ message OpenGamePlayCommand {
 		required OpenGamePlayCommand cmd = 102;
 	}
 	required string gameId = 1;
+}
+
+message OpenGamePlayCommandReply {
+	extend BaseCommand {
+		required OpenGamePlayCommandReply cmd = 103;
+	}
+	required OpenGamePlayCommand req = 1;
+	required string sessionId = 2;
+	required int64 inactiveTimeout = 3;
+}
+
+message LogoutCommand {
+	extend BaseCommand {
+		required LogoutCommand cmd = 104;
+	}
+	required string sessionId = 1;
 }
 
 enum Coin {
@@ -60,4 +77,9 @@ message Bet {
 	repeated CoinQuantitySlice slices = 1;
 }
 
+message BetResult {
+	required Bet bet = 1;
+	required bool win = 2;
+	required int32 amountUnsigned = 3;
+}
 

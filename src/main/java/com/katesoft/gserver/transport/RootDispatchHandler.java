@@ -108,8 +108,8 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
             return ch.write( message );
         }
         @Override
-        public void writeSync(Object message) throws InterruptedException {
-            writeAsync( message ).await();
+        public void writeSync(Object message) {
+            writeAsync( message ).awaitUninterruptibly();
         }
         @Override
         public Future<Void> writeAllAsync(Object message) {

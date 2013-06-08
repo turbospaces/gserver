@@ -198,6 +198,6 @@ message RouletteSpinRequest {
 		required RouletteSpinRequest cmd = 200;
 	}
 
-	required gserver.Bet bet = 2;
-	required RoulleteBetPositions position = 3;
+	required gserver.Bet bet = 1;
+	required RoulleteBetPositions position = 2;
 }

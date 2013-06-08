@@ -11,6 +11,6 @@ public interface UserConnection extends Closeable {
     long socketAcceptTimestamp();
     long socketLastActivityTimestamp();
     Future<Void> writeAsync(Object message);
-    void writeSync(Object message) throws InterruptedException;
+    void writeSync(Object message);
     Future<Void> writeAllAsync(Object message);
 }

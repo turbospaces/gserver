@@ -13,9 +13,10 @@ import com.katesoft.gserver.api.CommandWrapperEvent;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
+import com.katesoft.gserver.commands.Commands.BaseCommand;
 
 public abstract class AbstractPlayer implements Player {
-    private final Logger logger = LoggerFactory.getLogger( getClass() );
+    private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Set<PlayerSession> sessions = Sets.newHashSet();
     protected String id, displayName, email;
 
@@ -39,7 +40,7 @@ public abstract class AbstractPlayer implements Player {
     }
     @Override
     public boolean addPlayerSession(PlayerSession s) {
-        return sessions.add( Preconditions.checkNotNull( s ) );
+        return sessions.add(Preconditions.checkNotNull(s));
     }
     @Override
     public void close() {
@@ -48,21 +49,27 @@ public abstract class AbstractPlayer implements Player {
                 s.close();
             }
             catch ( Throwable t ) {
-                logger.error( t.getMessage(), t );
+                logger.error(t.getMessage(), t);
             }
         }
     }
     @Override
-    public boolean dispatchCommand(CommandWrapperEvent cmd) {
+    public boolean dispatchCommand(BaseCommand cmd,
+                                   CommandsQualifierCodec codec) {
+        boolean interpreted = false;
         for ( PlayerSession s : sessions ) {
             Game g = s.getAssociatedGame();
             try {
-                g.getGameCommandInterpreter().interpretCommand( cmd );
+                CommandWrapperEvent e = new CommandWrapperEvent(cmd, codec, s);
+                g.getGameCommandInterpreter().interpretCommand(e);
+                if ( e.isInterpreted() ) {
+                    interpreted = true;
+                }
             }
             catch ( Throwable t ) {
-                logger.error( format( "Unable to interpet game specific command %s:%s", g.id(), cmd.cmdClass().getSimpleName() ), t );
+                logger.error(format("Unable to interpet game specific command %s:%s", g.id(), cmd.getClass().getSimpleName()), t);
             }
         }
-        return cmd.isInterpreted();
+        return interpreted;
     }
 }

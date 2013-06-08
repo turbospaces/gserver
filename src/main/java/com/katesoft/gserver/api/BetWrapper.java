@@ -1,7 +1,8 @@
 package com.katesoft.gserver.api;
 
 import static com.google.common.base.Objects.toStringHelper;
-import static com.katesoft.gserver.api.GamePlayContext.MOCK;
+import static com.google.common.math.LongMath.mod;
+import static java.lang.System.currentTimeMillis;
 
 import com.katesoft.gserver.commands.Commands.Bet;
 import com.katesoft.gserver.commands.Commands.Coin;
@@ -60,12 +61,13 @@ public class BetWrapper {
     }
 
     public static Bet mock() {
+        long now = currentTimeMillis();
         return Bet
                 .newBuilder()
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( MOCK.rng().nextInt( 3 ) ).setCoin( Coin.TEN ).build() )
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( MOCK.rng().nextInt( 17 ) ).setCoin( Coin.FIVE ).build() )
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( MOCK.rng().nextInt( 53 ) ).setCoin( Coin.TWO ).build() )
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( MOCK.rng().nextInt( 145 ) ).setCoin( Coin.ONE ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 3 ) ).setCoin( Coin.TEN ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 17) ).setCoin( Coin.FIVE ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 53) ).setCoin( Coin.TWO ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 145) ).setCoin( Coin.ONE ).build() )
                 .build();
     }
 }

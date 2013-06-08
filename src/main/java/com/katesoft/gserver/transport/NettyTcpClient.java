@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Optional;
 import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
@@ -31,7 +30,6 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
-import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.core.Commands;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
@@ -40,14 +38,15 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     private final Logger logger = LoggerFactory.getLogger( getClass() );
     private final AtomicLong seq = new AtomicLong();
     private final ConcurrentMap<String, SettableFuture<BaseCommand>> corr = Maps.newConcurrentMap();
-    private final CommandsQualifierCodec commandsCodec = CommandsQualifierCodec.DEFAULT.get();
+    private final CommandsQualifierCodec codec;
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
     private final HostAndPort hostAndPort;
     private SocketChannel sch;
     private ChannelHandlerContext channelCtx;
 
-    public NettyTcpClient(HostAndPort hostAndPort) {
+    public NettyTcpClient(HostAndPort hostAndPort, CommandsQualifierCodec commandsCodec) {
         this.hostAndPort = hostAndPort;
+        this.codec = commandsCodec;
     }
     @Override
     public void run() {
@@ -93,10 +92,9 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
         return sch;
     }
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t,
-                                                          Optional<LoginCommand> loginCommand) {
+    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t) {
         BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( extension, t );
-        commandsCodec.qualifierWriter().apply(new AbstractMap.SimpleEntry(cmd, t));
+        codec.qualifierWriter().apply(new AbstractMap.SimpleEntry(cmd, t));
 
         long seqN = seq.incrementAndGet();
         MessageHeaders headers = MessageHeaders
@@ -106,9 +104,6 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                 .setSequenceNumber( seqN )
                 .build();
         cmd.setHeaders( headers ).setProtocolVersion( "1.0" );
-        if ( loginCommand.isPresent() ) {
-            cmd.setSessionId( loginCommand.get().getSessionId() );
-        }
 
         SettableFuture<BaseCommand> f = SettableFuture.create();
         corr.put( headers.getCorrelationID(), f );
@@ -131,5 +126,7 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
         if ( eventGroup != null ) {
             eventGroup.shutdownGracefully();
         }
+    }
+    public void setCommandsQualifierCodec(CommandsQualifierCodec codec) {
     }
 }
