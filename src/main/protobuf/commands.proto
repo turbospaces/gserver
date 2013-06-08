@@ -1,5 +1,6 @@
 package gserver;
 
+option optimize_for = SPEED;
 option java_package = "com.katesoft.gserver.commands";
 option java_outer_classname = "Commands";
 //
@@ -17,9 +18,18 @@ message BaseCommand {
 	optional string sessionId = 4;
 }
 
+message UnknownCommadException {
+	extend BaseCommand {
+		required UnknownCommadException cmd = 100;
+	}
+
+	required BaseCommand req = 1;
+	optional string game = 2;
+}
+
 message LoginCommand {
 	extend BaseCommand {
-		required LoginCommand cmd = 100;
+		required LoginCommand cmd = 101;
 	}
 	required string playerId = 1;
 	required string credentials = 2;
@@ -30,21 +40,21 @@ message LoginCommand {
 
 message LoginCommandReply {
 	extend BaseCommand {
-		required LoginCommandReply cmd = 101;
+		required LoginCommandReply cmd = 102;
 	}
 	required LoginCommand req = 1;
 }
 
 message OpenGamePlayCommand {
 	extend BaseCommand {
-		required OpenGamePlayCommand cmd = 102;
+		required OpenGamePlayCommand cmd = 103;
 	}
 	required string gameId = 1;
 }
 
-message OpenGamePlayCommandReply {
+message OpenGamePlayReply {
 	extend BaseCommand {
-		required OpenGamePlayCommandReply cmd = 103;
+		required OpenGamePlayReply cmd = 104;
 	}
 	required OpenGamePlayCommand req = 1;
 	required string sessionId = 2;
@@ -53,7 +63,7 @@ message OpenGamePlayCommandReply {
 
 message LogoutCommand {
 	extend BaseCommand {
-		required LogoutCommand cmd = 104;
+		required LogoutCommand cmd = 105;
 	}
 	required string sessionId = 1;
 }

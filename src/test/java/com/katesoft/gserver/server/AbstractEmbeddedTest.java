@@ -21,7 +21,7 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommandReply;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
-import com.katesoft.gserver.commands.Commands.OpenGamePlayCommandReply;
+import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.MessageListenerDispatcher;
 import com.katesoft.gserver.games.RouletteGame;
@@ -38,7 +38,7 @@ public abstract class AbstractEmbeddedTest {
     protected static NettyTcpClient c;
     protected static UserConnection uc;
 
-    Logger logger = LoggerFactory.getLogger(getClass());
+    protected Logger logger = LoggerFactory.getLogger(getClass());
 
     @SuppressWarnings("unchecked")
     @BeforeClass
@@ -68,12 +68,14 @@ public abstract class AbstractEmbeddedTest {
     }
     protected void login() throws InterruptedException, ExecutionException {
         LoginCommand cmd = LoginCommand.newBuilder().setPlayerId("playerX").setCredentials("tokenX").setClientPlatform("flash").build();
-        BaseCommand bcmd = c.callAsync(LoginCommand.cmd, cmd).get();
+        BaseCommand bcmd = c.callAsync(LoginCommand.cmd, cmd, null).get();
         checkNotNull(bcmd.getExtension(LoginCommandReply.cmd));
     }
-    protected OpenGamePlayCommandReply openGamePlay() throws InterruptedException, ExecutionException {
+    protected OpenGamePlayReply openGamePlay() throws InterruptedException, ExecutionException {
         OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId(RouletteGame.ID).build();
-        BaseCommand bcmd = c.callAsync(OpenGamePlayCommand.cmd, cmd).get();
-        return checkNotNull(bcmd.getExtension(OpenGamePlayCommandReply.cmd));
+        BaseCommand bcmd = c.callAsync(OpenGamePlayCommand.cmd, cmd, null).get();
+        OpenGamePlayReply reply = bcmd.getExtension(OpenGamePlayReply.cmd);
+        checkNotNull(reply.getSessionId());
+        return reply;
     }
 }

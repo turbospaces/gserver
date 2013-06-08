@@ -5,6 +5,7 @@ import static com.google.common.math.LongMath.mod;
 import static java.lang.System.currentTimeMillis;
 
 import com.katesoft.gserver.commands.Commands.Bet;
+import com.katesoft.gserver.commands.Commands.BetResult;
 import com.katesoft.gserver.commands.Commands.Coin;
 import com.katesoft.gserver.commands.Commands.CoinQuantitySlice;
 
@@ -50,16 +51,16 @@ public class BetWrapper {
         }
         return betAmount;
     }
-
     public boolean isWin() {
         return win;
     }
-
     @Override
     public String toString() {
         return toStringHelper( this ).add( "betAmount", betAmountUnsigned() ).add( "bet", bet ).add( "win", isWin() ).toString();
     }
-
+	public BetResult toBetResult() {
+		return BetResult.newBuilder().setWin(isWin()).setAmountUnsigned(betAmountUnsigned()).setBet(bet).build();
+	}
     public static Bet mock() {
         long now = currentTimeMillis();
         return Bet

@@ -2,6 +2,7 @@ import "commands.proto";
 
 package gserver.games.roullete;
 
+option optimize_for = SPEED;
 option java_package = "com.katesoft.gserver.games.roullete";
 option java_outer_classname = "RoulleteCommands";
 
@@ -193,11 +194,19 @@ enum RoulleteBetPositions {
 	split_35_36 = 158; // (35, 36)
 }
 
-message RouletteSpinRequest {
+message RouletteSpinCommand {
 	extend gserver.BaseCommand {
-		required RouletteSpinRequest cmd = 200;
+		required RouletteSpinCommand cmd = 200;
 	}
 
 	required gserver.Bet bet = 1;
+	required RoulleteBetPositions position = 2;
+}
+
+message RoulleteSpinReply {
+	extend gserver.BaseCommand {
+		required RoulleteSpinReply cmd = 201;
+	}
+	required gserver.BetResult betResult = 1;
 	required RoulleteBetPositions position = 2;
 }

@@ -45,7 +45,6 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
     @Override
     public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) throws Exception {
         SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
-        userConnection.lastActivity = System.currentTimeMillis();
         eventBus.onMessage( cmd, userConnection );
     }
     @Override
@@ -74,7 +73,6 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         private final String id;
         private final SocketChannel ch;
         private final ChannelGroup connections;
-        private long lastActivity;
         private final AtomicReference<Player> player = Atomics.newReference();
 
         public SocketUserConnection(SocketChannel ch, ChannelGroup connections) {
@@ -104,25 +102,21 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
             return Integer.parseInt( items[1] );
         }
         @Override
-        public Future<Void> writeAsync(Object message) {
+        public Future<Void> writeAsync(BaseCommand message) {
             return ch.write( message );
         }
         @Override
-        public void writeSync(Object message) {
+        public void writeSync(BaseCommand message) {
             writeAsync( message ).awaitUninterruptibly();
         }
         @Override
-        public Future<Void> writeAllAsync(Object message) {
+        public Future<Void> writeAllAsync(BaseCommand message) {
             return connections.write( message );
         }
         @Override
         public long socketAcceptTimestamp() {
             String[] items = ENCRYPTOR.decrypt( id ).split( ":" );
             return Long.parseLong( items[0] );
-        }
-        @Override
-        public long socketLastActivityTimestamp() {
-            return lastActivity;
         }
         @Override
         public Player asociatePlayer(Player p) {

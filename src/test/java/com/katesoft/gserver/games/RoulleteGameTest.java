@@ -13,10 +13,11 @@ import com.google.common.base.Throwables;
 import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.GamePlayContext;
 import com.katesoft.gserver.api.PlayerSession;
+import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.core.Commands;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.games.RouletteGame.PositionPayout;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinRequest;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
 
 public class RoulleteGameTest {
@@ -39,21 +40,24 @@ public class RoulleteGameTest {
     private void testPosition(final RoulleteBetPositions position) {
         PositionPayout positionPayout = RouletteGame.ALL.get(position);
         int payout = positionPayout.getPayout();
+        UserConnection.UserConnectionStub uc = new UserConnection.UserConnectionStub();
         final PlayerSession playerSession = Mockito.mock(PlayerSession.class);
+        Mockito.when(playerSession.getAssociatedUserConnection()).thenReturn(uc);
 
         assertTrue(repeatConcurrently(payout * 100, new Runnable() {
             @Override
             public void run() {
                 try {
                     game.getGameCommandInterpreter().interpretCommand(
-                            Commands.mockCommandEvent(RouletteSpinRequest.cmd,
-                                    RouletteSpinRequest.newBuilder().setPosition(position).setBet(BetWrapper.mock()).build(), playerSession));
+                            Commands.mockCommandEvent(RouletteSpinCommand.cmd,
+                            		RouletteSpinCommand.newBuilder().setPosition(position).setBet(BetWrapper.mock()).build(), playerSession));
                 }
                 catch ( Exception e ) {
                     Throwables.propagate(e);
                 }
             }
         }).isEmpty());
+        uc.close();
         logger.debug("position={},payout={},actualPayout={}(:::) Wins={},Loses={}, totalWin={}", positionPayout.getPosition(),
                 positionPayout.getPayout(), ctx.payout(), ctx.winsCount(), ctx.losesCount(), ctx.totalWin());
     }

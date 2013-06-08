@@ -31,6 +31,7 @@ import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
+import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.core.Commands;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 
@@ -92,7 +93,7 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
         return sch;
     }
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t) {
+    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t, OpenGamePlayReply session) {
         BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( extension, t );
         codec.qualifierWriter().apply(new AbstractMap.SimpleEntry(cmd, t));
 
@@ -104,6 +105,9 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                 .setSequenceNumber( seqN )
                 .build();
         cmd.setHeaders( headers ).setProtocolVersion( "1.0" );
+		if (session != null) {
+			cmd.setSessionId(session.getSessionId());
+		}
 
         SettableFuture<BaseCommand> f = SettableFuture.create();
         corr.put( headers.getCorrelationID(), f );

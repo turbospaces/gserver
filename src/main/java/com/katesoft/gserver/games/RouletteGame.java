@@ -2,6 +2,7 @@ package com.katesoft.gserver.games;
 
 import static com.google.common.base.Objects.toStringHelper;
 import static com.google.common.primitives.Ints.asList;
+import static com.katesoft.gserver.core.Commands.toReply;
 import static com.katesoft.gserver.games.RouletteGame.PositionPayout.of;
 import static com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions.*;
 
@@ -17,8 +18,9 @@ import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.CommandWrapperEvent;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GameCommandInterpreter;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinRequest;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteSpinReply;
 
 public class RouletteGame extends Game.AbstractBlankGame {
     public static final String ID = "roulette";
@@ -31,13 +33,18 @@ public class RouletteGame extends Game.AbstractBlankGame {
         interpreter = new GameCommandInterpreter() {
             @Override
             public void interpretCommand(CommandWrapperEvent e) {
-                if ( RouletteSpinRequest.class == e.cmdClass() ) {
-                    RouletteSpinRequest spin = e.getCmdForInterpretation().getExtension( RouletteSpinRequest.cmd );
+                if ( RouletteSpinCommand.class == e.cmdClass() ) {
+                	RouletteSpinCommand spin = e.getCmd().getExtension( RouletteSpinCommand.cmd );
 
+                	PositionPayout position = ALL.get( spin.getPosition() );
                     int number = gamePlayContext.rng().nextInt( 37 ) - 1;
                     Set<PositionPayout> positions = NUMS.get( number );
-                    boolean win = positions.contains( ALL.get( spin.getPosition() ) );
-                    gamePlayContext.creditWin( new BetWrapper( spin.getBet(), win ) );
+                    boolean win = positions.contains( position );
+
+                    BetWrapper bet = new BetWrapper( spin.getBet(), win );
+                    gamePlayContext.creditWin( bet );
+                    RoulleteSpinReply spinReply = RoulleteSpinReply.newBuilder().setBetResult(bet.toBetResult()).setPosition(position.getPosition()).build();
+                    e.replyAsyncAndAcknowledge(toReply(e, RoulleteSpinReply.cmd, spinReply));
                 }
             }
         };

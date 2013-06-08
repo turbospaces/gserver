@@ -21,6 +21,11 @@ public abstract class Commands {
         RoulleteCommands.registerAllExtensions(registry);
         return registry;
     }
+	public static <T> BaseCommand toReply(CommandWrapperEvent e,
+			GeneratedMessage.GeneratedExtension<BaseCommand, T> extension,
+			T reply) {
+		return toReply(e.getCmd(), e.getCodec(), extension, reply);
+	}
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public static <T> BaseCommand toReply(BaseCommand cmd,
                                           CommandsQualifierCodec codec,

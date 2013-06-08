@@ -10,7 +10,7 @@ import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommandReply;
 import com.katesoft.gserver.commands.Commands.LogoutCommand;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
-import com.katesoft.gserver.commands.Commands.OpenGamePlayCommandReply;
+import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.spi.AuthService;
 import com.katesoft.gserver.spi.GamesAdminService;
 import com.katesoft.gserver.transport.TransportMessageListener;
@@ -37,10 +37,10 @@ public class MessageListenerDispatcher implements TransportMessageListener {
             Player player = uc.getAssociatedPlayer();
             PlayerSession playerSession = gameCtlService.openOrRestorePlayerSession(openGamePlay.getGameId(), player, uc);
             player.addPlayerSession(playerSession);
-            OpenGamePlayCommandReply reply =
-                    OpenGamePlayCommandReply.newBuilder().setReq(openGamePlay).setSessionId(playerSession.id())
+            OpenGamePlayReply reply =
+            		OpenGamePlayReply.newBuilder().setReq(openGamePlay).setSessionId(playerSession.id())
                             .setInactiveTimeout(playerSession.inactivityTimeoutSeconds()).build();
-            uc.writeAsync(toReply(cmd, codec, OpenGamePlayCommandReply.cmd, reply));
+            uc.writeAsync(toReply(cmd, codec, OpenGamePlayReply.cmd, reply));
         }
         else if ( LogoutCommand.class.getSimpleName().equals(qualifier) ) {
             Player player = uc.getAssociatedPlayer();
