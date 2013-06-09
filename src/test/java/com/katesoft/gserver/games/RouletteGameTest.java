@@ -20,10 +20,10 @@ import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.core.Commands;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.games.RouletteGame.PositionPayout;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
 
-public class RoulleteGameTest {
+public class RouletteGameTest {
     Logger logger = LoggerFactory.getLogger(getClass());
     RouletteGame game;
     GamePlayContext.RTP ctx = new GamePlayContext.RTP(mock(ScheduledExecutorService.class));
@@ -37,10 +37,10 @@ public class RoulleteGameTest {
 
     @Test
     public void testPositionsWithNumber0() {
-        testPosition(RoulleteBetPositions.number_0);
+        testPosition(RouletteBetPosition.number_0);
     }
 
-    private void testPosition(final RoulleteBetPositions position) {
+    private void testPosition(final RouletteBetPosition position) {
         PositionPayout positionPayout = RouletteGame.ALL.get(position);
         int payout = positionPayout.getPayout();
         UserConnection.UserConnectionStub uc = new UserConnection.UserConnectionStub();

@@ -6,7 +6,7 @@ option optimize_for = SPEED;
 option java_package = "com.katesoft.gserver.games.roullete";
 option java_outer_classname = "RoulleteCommands";
 
-enum RoulleteBetPositions {
+enum RouletteBetPosition {
 	none = 1;
 
 	// inside bets -> straight up bets (35:1)
@@ -200,13 +200,13 @@ message RouletteSpinCommand {
 	}
 
 	required gserver.Bet bet = 1;
-	required RoulleteBetPositions position = 2;
+	required RouletteBetPosition position = 2;
 }
 
-message RoulleteSpinReply {
+message RouletteSpinReply {
 	extend gserver.BaseCommand {
-		required RoulleteSpinReply cmd = 201;
+		required RouletteSpinReply cmd = 201;
 	}
 	required gserver.BetResult betResult = 1;
-	required RoulleteBetPositions position = 2;
+	required RouletteBetPosition position = 2;
 }
