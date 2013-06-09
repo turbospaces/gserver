@@ -15,7 +15,7 @@ public interface TransportMessageListener extends EventListener {
         private final Logger logger = LoggerFactory.getLogger( TransportMessageListener.class );
 
         @Override
-        public void onMessage(BaseCommand cmd, UserConnection userConnection) throws InterruptedException {
+        public void onMessage(BaseCommand cmd, UserConnection userConnection) {
             logger.debug( "onMessage({})={}", cmd.getQualifier(), cmd );
 
             userConnection.writeSync( cmd );

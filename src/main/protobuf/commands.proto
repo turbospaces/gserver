@@ -58,14 +58,12 @@ message OpenGamePlayReply {
 	}
 	required OpenGamePlayCommand req = 1;
 	required string sessionId = 2;
-	required int64 inactiveTimeout = 3;
 }
 
-message LogoutCommand {
+message CloseGamePlayAndLogoutCommand {
 	extend BaseCommand {
-		required LogoutCommand cmd = 105;
+		required CloseGamePlayAndLogoutCommand cmd = 105;
 	}
-	required string sessionId = 1;
 }
 
 enum Coin {

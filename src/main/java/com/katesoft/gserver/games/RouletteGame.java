@@ -16,21 +16,18 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.CommandWrapperEvent;
-import com.katesoft.gserver.api.Game;
-import com.katesoft.gserver.api.GameCommandInterpreter;
+import com.katesoft.gserver.api.GameCommandsInterpreter;
+import com.katesoft.gserver.core.AbstractGame;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteSpinReply;
 
-public class RouletteGame extends Game.AbstractBlankGame {
-    public static final String ID = "roulette";
-    
+public class RouletteGame extends AbstractGame {
     static final Map<RoulleteBetPositions, PositionPayout> ALL = Maps.newHashMap();
     static final Map<Integer, Set<PositionPayout>> NUMS = Maps.newHashMap();
 
     public RouletteGame() {
-        super( ID );
-        interpreter = new GameCommandInterpreter() {
+        interpreter = new GameCommandsInterpreter() {
             @Override
             public void interpretCommand(CommandWrapperEvent e) {
                 if ( RouletteSpinCommand.class == e.cmdClass() ) {

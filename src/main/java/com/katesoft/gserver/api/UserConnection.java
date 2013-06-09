@@ -21,8 +21,8 @@ public interface UserConnection extends Closeable {
 	Future<Void> writeAllAsync(BaseCommand message);
 
 	public static class UserConnectionStub implements UserConnection {
-		private Logger logger = LoggerFactory.getLogger(getClass());
-		private String id = UUID.randomUUID().toString();
+		private final Logger logger = LoggerFactory.getLogger(getClass());
+		private final String id = UUID.randomUUID().toString();
 		private Player player;
 
 		@Override
@@ -46,7 +46,7 @@ public interface UserConnection extends Closeable {
 		public  Future<Void> writeAsync(BaseCommand message) {
 			logger.trace("writing reply={} async", message);
 			Void v = null;
-			return (Future<Void>) immediateCheckedFuture(v);
+			return immediateCheckedFuture(v);
 		}
 		@Override
 		public void writeSync(BaseCommand message) {

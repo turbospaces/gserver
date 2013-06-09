@@ -6,6 +6,8 @@ import static java.lang.String.format;
 
 import java.util.Set;
 
+import javax.annotation.Nullable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +17,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.Sets;
 import com.katesoft.gserver.api.CommandWrapperEvent;
 import com.katesoft.gserver.api.Game;
+import com.katesoft.gserver.api.GamePlayContext;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
@@ -44,10 +47,21 @@ public abstract class AbstractPlayer implements Player {
 		return email;
 	}
 	@Override
-	public boolean addPlayerSession(PlayerSession s) {
+	public synchronized boolean addPlayerSession(PlayerSession s) {
 		return sessions.add(Preconditions.checkNotNull(s));
 	}
 	@Override
+    public synchronized void closePlayerSession(final String sessionId) {
+        PlayerSession session = find(sessions, new Predicate<PlayerSession>() {
+            @Override
+            public boolean apply(@Nullable PlayerSession input) {
+                return input.id().equals(sessionId);
+            }
+        });
+        session.close();
+        sessions.remove(session);
+    }
+    @Override
 	public void close() {
 		for (PlayerSession s : sessions) {
 			try {
@@ -58,7 +72,7 @@ public abstract class AbstractPlayer implements Player {
 		}
 	}
 	@Override
-	public boolean dispatchCommand(BaseCommand cmd, CommandsQualifierCodec codec) {
+	public boolean dispatchCommand(BaseCommand cmd, CommandsQualifierCodec codec, GamePlayContext ctx) {
 		final String sessionId = checkNotNull(cmd.getSessionId(), "got command=%s detached from session", cmd);
 		PlayerSession session = find(sessions, new Predicate<PlayerSession>() {
 			@Override
@@ -69,19 +83,18 @@ public abstract class AbstractPlayer implements Player {
 		Game g = session.getAssociatedGame();
 		for (;;) {
 			try {
-				CommandWrapperEvent e = new CommandWrapperEvent(cmd, codec,
-						session);
-				g.getGameCommandInterpreter().interpretCommand(e);
+				CommandWrapperEvent e = new CommandWrapperEvent(cmd, codec, session);
+				g.commandsInterpreter().interpretCommand(e);
 				boolean acknowledged = e.isAcknowledged();
 				if (!acknowledged) {
-					UnknownCommadException reply = UnknownCommadException.newBuilder().setGame(g.id()).setReq(cmd).build();
+					UnknownCommadException reply = UnknownCommadException.newBuilder().setGame(g.getClass().getSimpleName()).setReq(cmd).build();
 					session.getAssociatedUserConnection().writeAsync( Commands.toReply(cmd, codec, UnknownCommadException.cmd, reply));
 				}
 				return acknowledged;
 			} catch (Throwable t) {
 				logger.error(
 						format("Unable to interpet game specific command %s:%s",
-								g.id(), cmd.getClass().getSimpleName()), t);
+								g.getClass().getSimpleName(), cmd.getClass().getSimpleName()), t);
 				Throwables.propagate(t);
 			}
 		}

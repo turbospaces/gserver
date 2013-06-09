@@ -2,6 +2,9 @@ package com.katesoft.gserver.games;
 
 import static com.katesoft.gserver.misc.Misc.repeatConcurrently;
 import static junit.framework.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+
+import java.util.concurrent.ScheduledExecutorService;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -23,7 +26,7 @@ import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulleteBetPositions
 public class RoulleteGameTest {
     Logger logger = LoggerFactory.getLogger(getClass());
     RouletteGame game;
-    GamePlayContext.RTP ctx = new GamePlayContext.RTP();
+    GamePlayContext.RTP ctx = new GamePlayContext.RTP(mock(ScheduledExecutorService.class));
 
     @Before
     public void setup() {
@@ -48,7 +51,7 @@ public class RoulleteGameTest {
             @Override
             public void run() {
                 try {
-                    game.getGameCommandInterpreter().interpretCommand(
+                    game.commandsInterpreter().interpretCommand(
                             Commands.mockCommandEvent(RouletteSpinCommand.cmd,
                             		RouletteSpinCommand.newBuilder().setPosition(position).setBet(BetWrapper.mock()).build(), playerSession));
                 }

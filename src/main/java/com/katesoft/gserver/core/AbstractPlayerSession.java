@@ -28,5 +28,7 @@ public abstract class AbstractPlayerSession implements PlayerSession {
         return game;
     }
     @Override
-    public void close() {}
+    public void close() {
+        getAssociatedGame().close();
+    }
 }

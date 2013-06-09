@@ -15,8 +15,7 @@ public class CommandWrapperEvent {
 	private final PlayerSession playerSession;
 	private boolean acknowledged;
 
-	public CommandWrapperEvent(BaseCommand cmd, CommandsQualifierCodec codec,
-			PlayerSession playerSession) {
+	public CommandWrapperEvent(BaseCommand cmd, CommandsQualifierCodec codec, PlayerSession playerSession) {
 		this.playerSession = playerSession;
 		this.cmd = checkNotNull(cmd);
 		this.codec = checkNotNull(codec);
@@ -43,8 +42,8 @@ public class CommandWrapperEvent {
 	/**
 	 * manually acknowledge the reception of the message. In most cases you
 	 * would not need to call this method at all since it will be called as part
-	 * of {@link #replyAsyncAndAcknowledge(GeneratedMessage)} and
-	 * {@link #replySyncAndAcknowledge(GeneratedMessage)}, but it would be
+	 * of {@link #replyAsyncAndAcknowledge(BaseCommand)} and
+	 * {@link #replySyncAndAcknowledge(BaseCommand)}, but it would be
 	 * required to manually acknowledge the reception of message in case when no
 	 * reply expected/required (this is needed for system in order to properly
 	 * react for unhandled messages and reply with

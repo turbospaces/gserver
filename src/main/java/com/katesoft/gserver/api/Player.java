@@ -15,12 +15,14 @@ public interface Player extends Closeable {
      */
     @Override
     void close();
+    void closePlayerSession(String sessionId);
     /**
      * send the command to the player session(s) for interpretation.
      * 
      * @param cmd - network command event.
      * @param codec - command qualifier codec.
+     * @param ctx - game play context.
      * @return whether command has been interpreted by at least one game(player session).
      */
-    boolean dispatchCommand(final BaseCommand cmd, CommandsQualifierCodec codec);
+    boolean dispatchCommand(final BaseCommand cmd, CommandsQualifierCodec codec, GamePlayContext ctx);
 }

@@ -19,7 +19,7 @@ public class RoulleteEmbeddedTest extends AbstractEmbeddedTest {
     @Test
     public void works() throws InterruptedException, ExecutionException {
         login();
-        OpenGamePlayReply openGamePlay = openGamePlay();
+        OpenGamePlayReply openGamePlay = openGamePlay(RouletteGame.class);
 
         RoulleteBetPositions position = RoulleteBetPositions.values()[RoulleteBetPositions.values().length - 1];
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();

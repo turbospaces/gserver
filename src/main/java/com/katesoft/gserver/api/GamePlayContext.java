@@ -1,22 +1,52 @@
 package com.katesoft.gserver.api;
 
-import java.security.SecureRandom;
 import java.util.Random;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.katesoft.gserver.misc.Misc;
 
 public interface GamePlayContext {
     Random rng();
     void creditWin(BetWrapper bet);
+    ScheduledFuture<?> schedule(Runnable r, long period, TimeUnit timeUnit);
 
     public static abstract class AbstractGamePlayContext implements GamePlayContext {
-        private final SecureRandom rng = (SecureRandom) Misc.RANDOM;
+        private final Logger logger = LoggerFactory.getLogger(getClass());
+
+        private final Random rng;
+        private final ScheduledExecutorService scheduledExec;
+
+        public AbstractGamePlayContext(ScheduledExecutorService exec, Random rng) {
+            this.scheduledExec = exec;
+            this.rng = rng;
+        }
         @Override
         public Random rng() {
             return rng;
-        }        
+        }
+        @Override
+        public ScheduledFuture<?> schedule(final Runnable r,
+                                           final long period,
+                                           final TimeUnit timeUnit) {
+            return scheduledExec.scheduleAtFixedRate(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        r.run();
+                    }
+                    catch ( Throwable t ) {
+                        logger.error(t.getMessage(), t);
+                    }
+                }
+            }, 0, period, timeUnit);
+        }
         @Override
         public void creditWin(BetWrapper bet) {}
     }
@@ -27,6 +57,9 @@ public interface GamePlayContext {
         private final AtomicLong winsAmount = new AtomicLong();
         private final AtomicLong loseAmount = new AtomicLong();
 
+        public RTP(ScheduledExecutorService scheduledExec) {
+            super(scheduledExec, Misc.RANDOM);
+        }
         @Override
         public void creditWin(BetWrapper bet) {
             if ( bet.isWin() ) {
@@ -62,5 +95,5 @@ public interface GamePlayContext {
                 }
             }
         }
-    };
+    }
 }

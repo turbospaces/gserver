@@ -4,7 +4,6 @@ import java.io.Closeable;
 
 public interface PlayerSession extends Closeable {
     String id();
-    long inactivityTimeoutSeconds();
     UserConnection getAssociatedUserConnection();
     Game getAssociatedGame();
     Player getPlayer();
