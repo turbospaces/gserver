@@ -2,6 +2,9 @@ package com.katesoft.gserver.core;
 
 import static com.katesoft.gserver.core.Commands.toReply;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
@@ -16,12 +19,17 @@ import com.katesoft.gserver.spi.PlatformInterface;
 import com.katesoft.gserver.transport.TransportMessageListener;
 
 public class MessageListenerDispatcher implements TransportMessageListener {
+    private final Logger logger = LoggerFactory.getLogger( getClass() );
     private final PlatformInterface platformInterface;
 
     @Override
     public void onMessage(BaseCommand cmd, UserConnection uc) throws Exception {
         String qualifier = cmd.getQualifier();
         Class<? extends GeneratedMessage> type = platformInterface.commandsCodec().qualifierToType().apply( qualifier );
+
+        if ( cmd.getDebug() ) {
+            logger.debug( "onMessage(connection={})={}", uc.id(), cmd );
+        }
 
         if ( LoginCommand.class == type ) {
             LoginCommand login = cmd.getExtension( LoginCommand.cmd );

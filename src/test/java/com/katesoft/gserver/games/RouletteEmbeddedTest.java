@@ -23,7 +23,7 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
 
         RouletteBetPosition position = RouletteBetPosition.values()[RouletteBetPosition.values().length - 4];
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();
-        RouletteSpinReply reply = c.callAsync( RouletteSpinCommand.cmd, req, openGamePlay ).get().getExtension( RouletteSpinReply.cmd );
+        RouletteSpinReply reply = c.callAsync( RouletteSpinCommand.cmd, req, openGamePlay.getSessionId(), true ).get().getExtension( RouletteSpinReply.cmd );
         assertSame( position, reply.getPosition() );
         assertNotNull( reply.getBetResult() );
         logger.trace( reply.toString() );

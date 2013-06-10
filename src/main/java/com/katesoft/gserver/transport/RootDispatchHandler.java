@@ -38,10 +38,10 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
 @Sharable
-class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {
+class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {    
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
     private static AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
-
+    
     private final ChannelGroup connections = new DefaultChannelGroup();
     private final TransportMessageListener eventBus;
     private final ExtensionRegistry extensionRegistry;

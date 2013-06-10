@@ -16,6 +16,7 @@ message BaseCommand {
 	required MessageHeaders headers = 2;
 	required string protocolVersion = 3;
 	optional string sessionId = 4;
+	optional bool debug = 5;
 }
 
 message UnknownCommadException {

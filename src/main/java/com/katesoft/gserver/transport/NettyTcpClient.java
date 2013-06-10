@@ -41,13 +41,12 @@ import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.ExtensionRegistry;
-import com.google.protobuf.GeneratedMessage;
+import com.google.protobuf.GeneratedMessage.GeneratedExtension;
 import com.googlecode.protobuf.format.JsonFormat;
 import com.googlecode.protobuf.format.JsonFormat.ParseException;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
-import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.core.Commands;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 
@@ -157,9 +156,8 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
         return sch;
     }
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t,
-                                                          OpenGamePlayReply session) {
-        BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( extension, t );
+    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedExtension<BaseCommand, Type> ext, Type t, String sessionId, boolean debug) {
+        BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( ext, t );
         codec.qualifierWriter().apply( new AbstractMap.SimpleEntry( cmd, t ) );
 
         long seqN = seq.incrementAndGet();
@@ -169,9 +167,9 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                 .setMessageTimestamp( System.currentTimeMillis() )
                 .setSequenceNumber( seqN )
                 .build();
-        cmd.setHeaders( headers ).setProtocolVersion( "1.0" );
-        if ( session != null ) {
-            cmd.setSessionId( session.getSessionId() );
+        cmd.setHeaders( headers ).setProtocolVersion( "1.0" ).setDebug( debug );
+        if ( sessionId != null ) {
+            cmd.setSessionId( sessionId );
         }
 
         SettableFuture<BaseCommand> f = SettableFuture.create();

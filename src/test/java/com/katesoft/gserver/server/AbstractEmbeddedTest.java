@@ -78,12 +78,12 @@ public abstract class AbstractEmbeddedTest {
     }
     protected void login() throws InterruptedException, ExecutionException {
         LoginCommand cmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();
-        BaseCommand bcmd = c.callAsync( LoginCommand.cmd, cmd, null ).get();
+        BaseCommand bcmd = c.callAsync( LoginCommand.cmd, cmd, null, true ).get();
         checkNotNull( bcmd.getExtension( LoginCommandReply.cmd ) );
     }
     protected OpenGamePlayReply openGamePlay(Class<? extends Game> game) throws InterruptedException, ExecutionException {
         OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId( game.getSimpleName() ).build();
-        BaseCommand bcmd = c.callAsync( OpenGamePlayCommand.cmd, cmd, null ).get();
+        BaseCommand bcmd = c.callAsync( OpenGamePlayCommand.cmd, cmd, null, true ).get();
         OpenGamePlayReply reply = bcmd.getExtension( OpenGamePlayReply.cmd );
         checkNotNull( reply.getSessionId() );
         return reply;
