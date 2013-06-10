@@ -23,7 +23,7 @@ public interface PlatformInterface {
     GamePlayContext gamePlayContext();
 
     //
-    // 
+    //
     //
     public static class MockPlatformInterface implements PlatformInterface {
         private final ConcurrentMap<String, Player> players = Maps.newConcurrentMap();
@@ -35,7 +35,7 @@ public interface PlatformInterface {
             this.ctx = ctx;
             this.codec = codec;
             for ( Class<? extends Game> cl : games ) {
-                this.games.put(cl.getSimpleName(), cl);
+                this.games.put( cl.getSimpleName(), cl );
             }
         }
         @Override
@@ -48,10 +48,10 @@ public interface PlatformInterface {
         }
         @Override
         public Player login(String playerId, String credentials) {
-            Player player = players.get(playerId);
+            Player player = players.get( playerId );
             if ( player == null ) {
-                player = new AbstractPlayer(playerId, playerId + "@my.com") {};
-                Player prev = players.putIfAbsent(playerId, player);
+                player = new AbstractPlayer( playerId, playerId + "@my.com" ) {};
+                Player prev = players.putIfAbsent( playerId, player );
                 if ( prev != null ) {
                     player = prev;
                 }
@@ -60,11 +60,11 @@ public interface PlatformInterface {
         }
         @Override
         public void logout(Player player, String sessionId) {
-            player.closePlayerSession(sessionId);
+            player.closePlayerSession( sessionId );
         }
         @Override
-        public PlayerSession openPlayerSession(final String gameId,final Player player, final UserConnection uc) {
-            return new AbstractPlayerSession(uc, newGameInstance(gameId), player) {
+        public PlayerSession openPlayerSession(final String gameId, final Player player, final UserConnection uc) {
+            return new AbstractPlayerSession( uc, newGameInstance( gameId ), player ) {
                 @Override
                 public String id() {
                     return uc.id();
@@ -72,15 +72,15 @@ public interface PlatformInterface {
             };
         }
         protected Game newGameInstance(final String gameId) {
-            Class<? extends Game> c = checkNotNull(games.get(gameId), "Game=%s not supported", gameId);
+            Class<? extends Game> c = checkNotNull( games.get( gameId ), "Game=%s not supported", gameId );
             for ( ;; ) {
                 try {
                     Game game = c.newInstance();
-                    game.init(gamePlayContext());
+                    game.init( gamePlayContext() );
                     return game;
                 }
                 catch ( Exception e ) {
-                    Throwables.propagate(e);
+                    Throwables.propagate( e );
                 }
             }
         }

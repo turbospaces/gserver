@@ -31,17 +31,21 @@ public class RouletteGame extends AbstractGame {
             @Override
             public void interpretCommand(CommandWrapperEvent e) {
                 if ( RouletteSpinCommand.class == e.cmdClass() ) {
-                	RouletteSpinCommand spin = e.getCmd().getExtension( RouletteSpinCommand.cmd );
+                    RouletteSpinCommand spin = e.getCmd().getExtension( RouletteSpinCommand.cmd );
 
-                	PositionPayout position = ALL.get( spin.getPosition() );
+                    PositionPayout position = ALL.get( spin.getPosition() );
                     int number = gamePlayContext.rng().nextInt( 37 ) - 1;
                     Set<PositionPayout> positions = NUMS.get( number );
                     boolean win = positions.contains( position );
 
                     BetWrapper bet = new BetWrapper( spin.getBet(), win );
                     gamePlayContext.creditWin( bet );
-                    RouletteSpinReply spinReply = RouletteSpinReply.newBuilder().setBetResult(bet.toBetResult()).setPosition(position.getPosition()).build();
-                    e.replyAsyncAndAcknowledge(toReply(e, RouletteSpinReply.cmd, spinReply));
+                    RouletteSpinReply spinReply = RouletteSpinReply
+                            .newBuilder()
+                            .setBetResult( bet.toBetResult() )
+                            .setPosition( position.getPosition() )
+                            .build();
+                    e.replyAsyncAndAcknowledge( toReply( e, RouletteSpinReply.cmd, spinReply ) );
                 }
             }
         };

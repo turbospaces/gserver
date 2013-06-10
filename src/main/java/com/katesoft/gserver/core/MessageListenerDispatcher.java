@@ -17,37 +17,37 @@ import com.katesoft.gserver.transport.TransportMessageListener;
 
 public class MessageListenerDispatcher implements TransportMessageListener {
     private final PlatformInterface platformInterface;
-    
+
     @Override
     public void onMessage(BaseCommand cmd, UserConnection uc) throws Exception {
         String qualifier = cmd.getQualifier();
-        Class<? extends GeneratedMessage> type = platformInterface.commandsCodec().qualifierToType().apply(qualifier);
+        Class<? extends GeneratedMessage> type = platformInterface.commandsCodec().qualifierToType().apply( qualifier );
 
         if ( LoginCommand.class == type ) {
-            LoginCommand login = cmd.getExtension(LoginCommand.cmd);
-            Player player = platformInterface.login(login.getPlayerId(), login.getCredentials());
-            uc.asociatePlayer(player);
-            LoginCommandReply reply = LoginCommandReply.newBuilder().setReq(login).build();
-            uc.writeAsync(toReply(cmd, platformInterface.commandsCodec(), LoginCommandReply.cmd, reply));
+            LoginCommand login = cmd.getExtension( LoginCommand.cmd );
+            Player player = platformInterface.login( login.getPlayerId(), login.getCredentials() );
+            uc.asociatePlayer( player );
+            LoginCommandReply reply = LoginCommandReply.newBuilder().setReq( login ).build();
+            uc.writeAsync( toReply( cmd, platformInterface.commandsCodec(), LoginCommandReply.cmd, reply ) );
         }
         else if ( OpenGamePlayCommand.class == type ) {
-            OpenGamePlayCommand openGamePlay = cmd.getExtension(OpenGamePlayCommand.cmd);
+            OpenGamePlayCommand openGamePlay = cmd.getExtension( OpenGamePlayCommand.cmd );
             Player player = uc.getAssociatedPlayer();
-            PlayerSession playerSession = platformInterface.openPlayerSession(openGamePlay.getGameId(), player, uc);
-            player.addPlayerSession(playerSession);
-            OpenGamePlayReply reply = OpenGamePlayReply.newBuilder().setReq(openGamePlay).setSessionId(playerSession.id()).build();
-            uc.writeAsync(toReply(cmd, platformInterface.commandsCodec(), OpenGamePlayReply.cmd, reply));
+            PlayerSession playerSession = platformInterface.openPlayerSession( openGamePlay.getGameId(), player, uc );
+            player.addPlayerSession( playerSession );
+            OpenGamePlayReply reply = OpenGamePlayReply.newBuilder().setReq( openGamePlay ).setSessionId( playerSession.id() ).build();
+            uc.writeAsync( toReply( cmd, platformInterface.commandsCodec(), OpenGamePlayReply.cmd, reply ) );
         }
         else if ( CloseGamePlayAndLogoutCommand.class == type ) {
             Player player = uc.getAssociatedPlayer();
             if ( player != null ) {
-                platformInterface.logout(player, cmd.getSessionId());
+                platformInterface.logout( player, cmd.getSessionId() );
                 uc.close();
             }
         }
         else {
             Player player = uc.getAssociatedPlayer();
-            player.dispatchCommand(cmd, platformInterface.commandsCodec(), platformInterface.gamePlayContext());
+            player.dispatchCommand( cmd, platformInterface.commandsCodec(), platformInterface.gamePlayContext() );
         }
     }
     public MessageListenerDispatcher(PlatformInterface platformInterface) {

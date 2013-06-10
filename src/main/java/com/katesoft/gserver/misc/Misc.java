@@ -41,7 +41,7 @@ import com.sun.jna.Platform;
  */
 @SuppressWarnings("restriction")
 public abstract class Misc {
-    private static final Logger LOGGER = LoggerFactory.getLogger( Misc.class );    
+    private static final Logger LOGGER = LoggerFactory.getLogger( Misc.class );
     private static final sun.misc.Unsafe UNSAFE;
     private static final Range<Integer> FREE_PORT_SCAN_RANGE = Range.closed( 1 << 10, 1 << 14 );
 

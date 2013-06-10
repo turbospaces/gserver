@@ -54,7 +54,7 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
         final ExtensionRegistry registry = Commands.newMessageRegistry();
         final CountDownLatch l = new CountDownLatch( 1 );
         final Bootstrap b = new Bootstrap();
-        
+
         b
                 .group( eventGroup )
                 .channel( NioSocketChannel.class )
@@ -93,9 +93,10 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
         return sch;
     }
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t, OpenGamePlayReply session) {
+    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedMessage.GeneratedExtension<BaseCommand, Type> extension, Type t,
+                                                          OpenGamePlayReply session) {
         BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( extension, t );
-        codec.qualifierWriter().apply(new AbstractMap.SimpleEntry(cmd, t));
+        codec.qualifierWriter().apply( new AbstractMap.SimpleEntry( cmd, t ) );
 
         long seqN = seq.incrementAndGet();
         MessageHeaders headers = MessageHeaders
@@ -105,9 +106,9 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                 .setSequenceNumber( seqN )
                 .build();
         cmd.setHeaders( headers ).setProtocolVersion( "1.0" );
-		if (session != null) {
-			cmd.setSessionId(session.getSessionId());
-		}
+        if ( session != null ) {
+            cmd.setSessionId( session.getSessionId() );
+        }
 
         SettableFuture<BaseCommand> f = SettableFuture.create();
         corr.put( headers.getCorrelationID(), f );
@@ -131,6 +132,5 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
             eventGroup.shutdownGracefully();
         }
     }
-    public void setCommandsQualifierCodec(CommandsQualifierCodec codec) {
-    }
+    public void setCommandsQualifierCodec(CommandsQualifierCodec codec) {}
 }

@@ -21,12 +21,13 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
 public interface CommandsQualifierCodec extends Closeable {
-	Supplier<CommandsQualifierCodec> DEFAULT = Suppliers.memoize(new Supplier<CommandsQualifierCodec>() {
-		@Override
-		public CommandsQualifierCodec get() {
-			return new DefaultCommandsCodec();
-		}
-	});
+    Supplier<CommandsQualifierCodec> DEFAULT = Suppliers.memoize( new Supplier<CommandsQualifierCodec>() {
+        @Override
+        public CommandsQualifierCodec get() {
+            return new DefaultCommandsCodec();
+        }
+    } );
+
     Function<String, Class<? extends GeneratedMessage>> qualifierToType();
     Function<Map.Entry<BaseCommand.Builder, Object>, BaseCommand.Builder> qualifierWriter();
 
@@ -36,37 +37,36 @@ public interface CommandsQualifierCodec extends Closeable {
             @SuppressWarnings("unchecked")
             @Override
             public Class<? extends GeneratedMessage> apply(@Nullable String input) {
-                Class<?> clazz = cache.get(input);
-                Preconditions.checkNotNull(clazz, "Command=%s not registered", input);
+                Class<?> clazz = cache.get( input );
+                Preconditions.checkNotNull( clazz, "Command=%s not registered", input );
                 return (Class<? extends GeneratedMessage>) clazz;
             }
         };
-        private final Function<Map.Entry<BaseCommand.Builder, Object>, BaseCommand.Builder> to =
-                new Function<Map.Entry<BaseCommand.Builder, Object>, BaseCommand.Builder>() {
-                    @Override
-                    public Builder apply(@Nullable Map.Entry<BaseCommand.Builder, Object> input) {
-                        String sname = input.getValue().getClass().getSimpleName();
-                        cache.putIfAbsent(sname, input.getValue().getClass());
-                        return input.getKey().setQualifier(sname);
-                    }
-                };
+        private final Function<Map.Entry<BaseCommand.Builder, Object>, BaseCommand.Builder> to = new Function<Map.Entry<BaseCommand.Builder, Object>, BaseCommand.Builder>() {
+            @Override
+            public Builder apply(@Nullable Map.Entry<BaseCommand.Builder, Object> input) {
+                String sname = input.getValue().getClass().getSimpleName();
+                cache.putIfAbsent( sname, input.getValue().getClass() );
+                return input.getKey().setQualifier( sname );
+            }
+        };
 
         public DefaultCommandsCodec() {
             try {
-                ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
+                ClassPath classPath = ClassPath.from( Thread.currentThread().getContextClassLoader() );
                 ImmutableSet<ClassInfo> topLevelClasses = classPath.getTopLevelClasses();
                 for ( ClassInfo c : topLevelClasses ) {
                     try {
                         Class<?> load = c.load();
-                        if ( GeneratedMessage.class.isAssignableFrom(load) ) {
-                            cache.put(load.getSimpleName(), load);
+                        if ( GeneratedMessage.class.isAssignableFrom( load ) ) {
+                            cache.put( load.getSimpleName(), load );
                         }
                     }
                     catch ( NoClassDefFoundError er ) {}
                 }
             }
             catch ( Throwable t ) {
-                Throwables.propagate(t);
+                Throwables.propagate( t );
             }
         }
         @Override

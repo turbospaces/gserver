@@ -24,44 +24,52 @@ import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 
 public class RouletteGameTest {
-    Logger logger = LoggerFactory.getLogger(getClass());
+    Logger logger = LoggerFactory.getLogger( getClass() );
     RouletteGame game;
-    GamePlayContext.RTP ctx = new GamePlayContext.RTP(mock(ScheduledExecutorService.class));
+    GamePlayContext.RTP ctx = new GamePlayContext.RTP( mock( ScheduledExecutorService.class ) );
 
     @Before
     public void setup() {
         CommandsQualifierCodec.DEFAULT.get();
         game = new RouletteGame();
-        game.init(ctx);
+        game.init( ctx );
     }
 
     @Test
     public void testPositionsWithNumber0() {
-        testPosition(RouletteBetPosition.number_0);
+        testPosition( RouletteBetPosition.number_0 );
     }
 
     private void testPosition(final RouletteBetPosition position) {
-        PositionPayout positionPayout = RouletteGame.ALL.get(position);
+        PositionPayout positionPayout = RouletteGame.ALL.get( position );
         int payout = positionPayout.getPayout();
         UserConnection.UserConnectionStub uc = new UserConnection.UserConnectionStub();
-        final PlayerSession playerSession = Mockito.mock(PlayerSession.class);
-        Mockito.when(playerSession.getAssociatedUserConnection()).thenReturn(uc);
+        final PlayerSession playerSession = Mockito.mock( PlayerSession.class );
+        Mockito.when( playerSession.getAssociatedUserConnection() ).thenReturn( uc );
 
-        assertTrue(repeatConcurrently(payout * 100, new Runnable() {
+        assertTrue( repeatConcurrently( payout * 100, new Runnable() {
             @Override
             public void run() {
                 try {
                     game.commandsInterpreter().interpretCommand(
-                            Commands.mockCommandEvent(RouletteSpinCommand.cmd,
-                            		RouletteSpinCommand.newBuilder().setPosition(position).setBet(BetWrapper.mock()).build(), playerSession));
+                            Commands.mockCommandEvent(
+                                    RouletteSpinCommand.cmd,
+                                    RouletteSpinCommand.newBuilder().setPosition( position ).setBet( BetWrapper.mock() ).build(),
+                                    playerSession ) );
                 }
                 catch ( Exception e ) {
-                    Throwables.propagate(e);
+                    Throwables.propagate( e );
                 }
             }
-        }).isEmpty());
+        } ).isEmpty() );
         uc.close();
-        logger.debug("position={},payout={},actualPayout={}(:::) Wins={},Loses={}, totalWin={}", positionPayout.getPosition(),
-                positionPayout.getPayout(), ctx.payout(), ctx.winsCount(), ctx.losesCount(), ctx.totalWin());
+        logger.debug(
+                "position={},payout={},actualPayout={}(:::) Wins={},Loses={}, totalWin={}",
+                positionPayout.getPosition(),
+                positionPayout.getPayout(),
+                ctx.payout(),
+                ctx.winsCount(),
+                ctx.losesCount(),
+                ctx.totalWin() );
     }
 }

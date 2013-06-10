@@ -19,13 +19,13 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
     @Test
     public void works() throws InterruptedException, ExecutionException {
         login();
-        OpenGamePlayReply openGamePlay = openGamePlay(RouletteGame.class);
+        OpenGamePlayReply openGamePlay = openGamePlay( RouletteGame.class );
 
         RouletteBetPosition position = RouletteBetPosition.values()[RouletteBetPosition.values().length - 4];
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();
         RouletteSpinReply reply = c.callAsync( RouletteSpinCommand.cmd, req, openGamePlay ).get().getExtension( RouletteSpinReply.cmd );
-        assertSame(position, reply.getPosition());
-        assertNotNull(reply.getBetResult());
-        logger.trace(reply.toString());
+        assertSame( position, reply.getPosition() );
+        assertNotNull( reply.getBetResult() );
+        logger.trace( reply.toString() );
     }
 }

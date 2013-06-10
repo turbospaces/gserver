@@ -16,12 +16,12 @@ import com.katesoft.gserver.api.GamePlayContext;
 public abstract class AbstractGame implements Game {
     protected transient GamePlayContext gamePlayContext;
     protected transient GameCommandsInterpreter interpreter;
-    private transient final Supplier<List<ScheduledFuture<?>>> scheduledTasks = Suppliers.memoize(new Supplier<List<ScheduledFuture<?>>>() {
+    private transient final Supplier<List<ScheduledFuture<?>>> scheduledTasks = Suppliers.memoize( new Supplier<List<ScheduledFuture<?>>>() {
         @Override
         public List<ScheduledFuture<?>> get() {
             return Lists.newLinkedList();
         }
-    });
+    } );
 
     @Override
     public void init(final GamePlayContext ctx) {
@@ -32,15 +32,13 @@ public abstract class AbstractGame implements Game {
             }
             @Override
             public void creditWin(BetWrapper bet) {
-                ctx.creditWin(bet);
+                ctx.creditWin( bet );
             }
             @Override
-            public ScheduledFuture<?> schedule(Runnable r,
-                                               long period,
-                                               TimeUnit timeUnit) {
+            public ScheduledFuture<?> schedule(Runnable r, long period, TimeUnit timeUnit) {
                 synchronized ( this ) {
-                    ScheduledFuture<?> task = ctx.schedule(r, period, timeUnit);
-                    scheduledTasks.get().add(task);
+                    ScheduledFuture<?> task = ctx.schedule( r, period, timeUnit );
+                    scheduledTasks.get().add( task );
                     return task;
                 }
             }
@@ -58,7 +56,7 @@ public abstract class AbstractGame implements Game {
     public synchronized void close() {
         for ( ScheduledFuture<?> task : scheduledTasks.get() ) {
             if ( !task.isCancelled() ) {
-                task.cancel(false);
+                task.cancel( false );
             }
         }
         scheduledTasks.get().clear();

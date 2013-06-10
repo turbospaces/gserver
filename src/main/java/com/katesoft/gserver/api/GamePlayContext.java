@@ -18,7 +18,7 @@ public interface GamePlayContext {
     ScheduledFuture<?> schedule(Runnable r, long period, TimeUnit timeUnit);
 
     public static abstract class AbstractGamePlayContext implements GamePlayContext {
-        private final Logger logger = LoggerFactory.getLogger(getClass());
+        private final Logger logger = LoggerFactory.getLogger( getClass() );
 
         private final Random rng;
         private final ScheduledExecutorService scheduledExec;
@@ -32,20 +32,18 @@ public interface GamePlayContext {
             return rng;
         }
         @Override
-        public ScheduledFuture<?> schedule(final Runnable r,
-                                           final long period,
-                                           final TimeUnit timeUnit) {
-            return scheduledExec.scheduleAtFixedRate(new Runnable() {
+        public ScheduledFuture<?> schedule(final Runnable r, final long period, final TimeUnit timeUnit) {
+            return scheduledExec.scheduleAtFixedRate( new Runnable() {
                 @Override
                 public void run() {
                     try {
                         r.run();
                     }
                     catch ( Throwable t ) {
-                        logger.error(t.getMessage(), t);
+                        logger.error( t.getMessage(), t );
                     }
                 }
-            }, 0, period, timeUnit);
+            }, 0, period, timeUnit );
         }
         @Override
         public void creditWin(BetWrapper bet) {}
@@ -58,17 +56,17 @@ public interface GamePlayContext {
         private final AtomicLong loseAmount = new AtomicLong();
 
         public RTP(ScheduledExecutorService scheduledExec) {
-            super(scheduledExec, Misc.RANDOM);
+            super( scheduledExec, Misc.RANDOM );
         }
         @Override
         public void creditWin(BetWrapper bet) {
             if ( bet.isWin() ) {
                 wins.incrementAndGet();
-                winsAmount.addAndGet(bet.betAmountUnsigned());
+                winsAmount.addAndGet( bet.betAmountUnsigned() );
             }
             else {
                 loses.incrementAndGet();
-                loseAmount.addAndGet(bet.betAmountUnsigned());
+                loseAmount.addAndGet( bet.betAmountUnsigned() );
             }
         }
         public long totalWin() {

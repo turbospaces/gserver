@@ -58,17 +58,17 @@ public class BetWrapper {
     public String toString() {
         return toStringHelper( this ).add( "betAmount", betAmountUnsigned() ).add( "bet", bet ).add( "win", isWin() ).toString();
     }
-	public BetResult toBetResult() {
-		return BetResult.newBuilder().setWin(isWin()).setAmountUnsigned(betAmountUnsigned()).setBet(bet).build();
-	}
+    public BetResult toBetResult() {
+        return BetResult.newBuilder().setWin( isWin() ).setAmountUnsigned( betAmountUnsigned() ).setBet( bet ).build();
+    }
     public static Bet mock() {
         long now = currentTimeMillis();
         return Bet
                 .newBuilder()
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 3 ) ).setCoin( Coin.TEN ).build() )
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 17) ).setCoin( Coin.FIVE ).build() )
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 53) ).setCoin( Coin.TWO ).build() )
-                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod(now, 145) ).setCoin( Coin.ONE ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod( now, 3 ) ).setCoin( Coin.TEN ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod( now, 17 ) ).setCoin( Coin.FIVE ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod( now, 53 ) ).setCoin( Coin.TWO ).build() )
+                .addSlices( CoinQuantitySlice.newBuilder().setQuantity( mod( now, 145 ) ).setCoin( Coin.ONE ).build() )
                 .build();
     }
 }

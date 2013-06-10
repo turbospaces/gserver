@@ -41,27 +41,27 @@ public abstract class AbstractEmbeddedTest {
     protected static NettyTcpClient c;
     protected static UserConnection uc;
 
-    protected Logger logger = LoggerFactory.getLogger(getClass());
+    protected Logger logger = LoggerFactory.getLogger( getClass() );
 
     @SuppressWarnings("unchecked")
     @BeforeClass
     public static void beforeClass() {
-        AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext(SCHEDULED_EXEC, Misc.RANDOM) {};
-        PlatformInterface platform = new PlatformInterface.MockPlatformInterface(ctx, CODEC, RouletteGame.class);
-        MessageListenerDispatcher mld = new MessageListenerDispatcher(platform);
+        AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
+        PlatformInterface platform = new PlatformInterface.MockPlatformInterface( ctx, CODEC, RouletteGame.class );
+        MessageListenerDispatcher mld = new MessageListenerDispatcher( platform );
 
-        HostAndPort hostAndPort = fromParts(shortHostname(), nextAvailablePort());
+        HostAndPort hostAndPort = fromParts( shortHostname(), nextAvailablePort() );
         s = new NettyServer();
-        s.startServer(hostAndPort, mld);
+        s.startServer( hostAndPort, mld );
 
-        c = new NettyTcpClient(hostAndPort, CODEC);
-        c.setCommandsQualifierCodec(CODEC);
+        c = new NettyTcpClient( hostAndPort, CODEC );
+        c.setCommandsQualifierCodec( CODEC );
         c.run();
-        uc = s.awaitForHandshake(c);
+        uc = s.awaitForHandshake( c );
     }
     @AfterClass
     public static void afterClass() {
-        shutdownExecutor(SCHEDULED_EXEC);
+        shutdownExecutor( SCHEDULED_EXEC );
         try {
             c.close();
         }
@@ -70,15 +70,15 @@ public abstract class AbstractEmbeddedTest {
         }
     }
     protected void login() throws InterruptedException, ExecutionException {
-        LoginCommand cmd = LoginCommand.newBuilder().setPlayerId("playerX").setCredentials("tokenX").setClientPlatform("flash").build();
-        BaseCommand bcmd = c.callAsync(LoginCommand.cmd, cmd, null).get();
-        checkNotNull(bcmd.getExtension(LoginCommandReply.cmd));
+        LoginCommand cmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();
+        BaseCommand bcmd = c.callAsync( LoginCommand.cmd, cmd, null ).get();
+        checkNotNull( bcmd.getExtension( LoginCommandReply.cmd ) );
     }
     protected OpenGamePlayReply openGamePlay(Class<? extends Game> game) throws InterruptedException, ExecutionException {
-        OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId(game.getSimpleName()).build();
-        BaseCommand bcmd = c.callAsync(OpenGamePlayCommand.cmd, cmd, null).get();
-        OpenGamePlayReply reply = bcmd.getExtension(OpenGamePlayReply.cmd);
-        checkNotNull(reply.getSessionId());
+        OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId( game.getSimpleName() ).build();
+        BaseCommand bcmd = c.callAsync( OpenGamePlayCommand.cmd, cmd, null ).get();
+        OpenGamePlayReply reply = bcmd.getExtension( OpenGamePlayReply.cmd );
+        checkNotNull( reply.getSessionId() );
         return reply;
     }
 }

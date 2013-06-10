@@ -18,9 +18,9 @@ public class CommandsResolverTest {
     public void works() {
         Commands.newMessageRegistry();
         CommandsQualifierCodec.DefaultCommandsCodec r = new CommandsQualifierCodec.DefaultCommandsCodec();
-        LoginCommand logCmd = LoginCommand.newBuilder().setPlayerId("playerX").setCredentials("tokenX").setClientPlatform("flash").build();
-        r.qualifierWriter().apply(new AbstractMap.SimpleEntry(BaseCommand.newBuilder(), logCmd));
-        assertSame(LoginCommand.class, r.qualifierToType().apply(LoginCommand.class.getSimpleName()));
+        LoginCommand logCmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();
+        r.qualifierWriter().apply( new AbstractMap.SimpleEntry( BaseCommand.newBuilder(), logCmd ) );
+        assertSame( LoginCommand.class, r.qualifierToType().apply( LoginCommand.class.getSimpleName() ) );
         r.close();
     }
 }
