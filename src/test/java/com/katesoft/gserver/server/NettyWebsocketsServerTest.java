@@ -7,7 +7,12 @@ import java.util.concurrent.ExecutionException;
 
 import org.junit.Test;
 
-public class NettyServerTest extends AbstractEmbeddedTest {
+import com.katesoft.gserver.transport.ConnectionType;
+
+public class NettyWebsocketsServerTest extends AbstractEmbeddedTest {
+    public NettyWebsocketsServerTest() {
+        connectionType = ConnectionType.WEBSOCKETS;
+    }
 
     @Test
     public void works() throws InterruptedException, ExecutionException {

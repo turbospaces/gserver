@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.katesoft.gserver.commands.Commands.BaseCommand;
+import com.katesoft.gserver.transport.ConnectionType;
 
 public interface UserConnection extends Closeable {
     String id();
@@ -19,6 +20,7 @@ public interface UserConnection extends Closeable {
     Future<Void> writeAsync(BaseCommand message);
     void writeSync(BaseCommand message);
     Future<Void> writeAllAsync(BaseCommand message);
+    ConnectionType connectionType();
 
     public static class UserConnectionStub implements UserConnection {
         private final Logger logger = LoggerFactory.getLogger( getClass() );
@@ -58,5 +60,9 @@ public interface UserConnection extends Closeable {
         }
         @Override
         public void close() {}
+        @Override
+        public ConnectionType connectionType() {
+            return ConnectionType.TCP;
+        }
     }
 }

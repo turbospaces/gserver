@@ -11,8 +11,21 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.http.DefaultHttpHeaders;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker;
+import io.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 
 import java.io.Closeable;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.AbstractMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
@@ -29,7 +42,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
+import com.googlecode.protobuf.format.JsonFormat;
+import com.googlecode.protobuf.format.JsonFormat.ParseException;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
+import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.core.Commands;
@@ -40,14 +56,16 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     private final AtomicLong seq = new AtomicLong();
     private final ConcurrentMap<String, SettableFuture<BaseCommand>> corr = Maps.newConcurrentMap();
     private final CommandsQualifierCodec codec;
+    private final ConnectionType connectionType;
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
     private final HostAndPort hostAndPort;
     private SocketChannel sch;
     private ChannelHandlerContext channelCtx;
 
-    public NettyTcpClient(HostAndPort hostAndPort, CommandsQualifierCodec commandsCodec) {
+    public NettyTcpClient(HostAndPort hostAndPort, CommandsQualifierCodec commandsCodec, ConnectionType type) {
         this.hostAndPort = hostAndPort;
         this.codec = commandsCodec;
+        this.connectionType = type;
     }
     @Override
     public void run() {
@@ -62,26 +80,72 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                 .option( ChannelOption.SO_KEEPALIVE, true )
                 .handler( new ChannelInitializer<SocketChannel>() {
                     @Override
-                    public void initChannel(SocketChannel ch) {
+                    public void initChannel(SocketChannel ch) throws URISyntaxException {
                         ChannelPipeline p = ch.pipeline();
-                        NettyServer.registerProtobufCodecs( p, registry );
-                        p.addLast( new ChannelInboundMessageHandlerAdapter<BaseCommand>() {
-
-                            @Override
-                            public void channelActive(ChannelHandlerContext ctx) {
-                                NettyTcpClient.this.channelCtx = ctx;
-                                sch = (SocketChannel) ctx.pipeline().channel();
-                                logger.debug( "NettyTcpClient connected via={}", sch );
-                                l.countDown();
-                            }
-                            @Override
-                            public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) {
-                                SettableFuture<BaseCommand> f = corr.remove( cmd.getHeaders().getCorrelationID() );
-                                if ( f != null ) {
-                                    f.set( cmd );
+                        if ( connectionType == ConnectionType.TCP ) {
+                            NettyServer.registerProtobufCodecs( p, registry );
+                            p.addLast( new ChannelInboundMessageHandlerAdapter<BaseCommand>() {
+                                @Override
+                                public void channelActive(ChannelHandlerContext ctx) {
+                                    NettyTcpClient.this.channelCtx = ctx;
+                                    sch = (SocketChannel) ctx.pipeline().channel();
+                                    logger.debug( "NettyTcpClient connected via={}", sch );
+                                    l.countDown();
                                 }
-                            }
-                        } );
+                                @Override
+                                public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) {
+                                    SettableFuture<BaseCommand> f = corr.remove( cmd.getHeaders().getCorrelationID() );
+                                    if ( f != null ) {
+                                        f.set( cmd );
+                                    }
+                                }
+                            } );
+                        }
+                        else if ( connectionType == ConnectionType.WEBSOCKETS ) {
+                            final HttpHeaders headers = new DefaultHttpHeaders();
+                            final WebSocketClientHandshaker handshaker = WebSocketClientHandshakerFactory.newHandshaker(
+                                    new URI( String.format( "ws://%s:%s/websockets", hostAndPort.getHostText(), hostAndPort.getPort() ) ),
+                                    WebSocketVersion.V13,
+                                    null,
+                                    false,
+                                    headers );
+
+                            p.addLast( "http-codec", new HttpClientCodec() );
+                            p.addLast( "aggregator", new HttpObjectAggregator( 8192 ) );
+                            p.addLast( "ws-handler", new ChannelInboundMessageHandlerAdapter<Object>() {
+                                @Override
+                                public void channelActive(ChannelHandlerContext ctx) {
+                                    handshaker.handshake( ctx.channel() );
+                                    NettyTcpClient.this.channelCtx = ctx;
+                                    sch = (SocketChannel) ctx.pipeline().channel();
+                                    logger.debug( "NettyTcpClient connected via={}", sch );
+                                }
+                                @Override
+                                public void messageReceived(ChannelHandlerContext ctx, Object msg) throws ParseException {
+                                    if ( !handshaker.isHandshakeComplete() ) {
+                                        handshaker.finishHandshake( ctx.channel(), (FullHttpResponse) msg );
+                                        System.out.println( "WebSocket Client connected!" );
+                                        l.countDown();
+                                        return;
+                                    }
+
+                                    WebSocketFrame frame = (WebSocketFrame) msg;
+                                    if ( frame instanceof TextWebSocketFrame ) {
+                                        TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
+                                        Builder bcmdb = BaseCommand.newBuilder();
+                                        JsonFormat.merge( textFrame.text(), registry, bcmdb );
+                                        BaseCommand cmd = bcmdb.build();
+                                        SettableFuture<BaseCommand> f = corr.remove( cmd.getHeaders().getCorrelationID() );
+                                        if ( f != null ) {
+                                            f.set( cmd );
+                                        }
+                                    }
+                                    else if ( frame instanceof CloseWebSocketFrame ) {
+                                        ctx.channel().close();
+                                    }
+                                }
+                            } );
+                        }
                     }
                 } );
 
@@ -114,7 +178,13 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
         corr.put( headers.getCorrelationID(), f );
 
         try {
-            channelCtx.write( cmd.build() );
+            BaseCommand bcmd = cmd.build();
+            if ( connectionType == ConnectionType.TCP ) {
+                channelCtx.write( bcmd );
+            }
+            else if ( connectionType == ConnectionType.WEBSOCKETS ) {
+                channelCtx.write( new TextWebSocketFrame( JsonFormat.printToString( bcmd ) ) );
+            }
             channelCtx.flush();
         }
         catch ( Throwable e ) {

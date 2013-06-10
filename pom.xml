@@ -28,8 +28,9 @@
         <junit.version>4.10</junit.version>
         <mockito.version>1.9.5</mockito.version>
         <junit-benchmarks.version>0.6.0</junit-benchmarks.version>
-
         <protobuf.version>2.5.0</protobuf.version>
+        <protobuf.java.format.version>1.2</protobuf.java.format.version>
+        
         <jasypt.version>1.9.0</jasypt.version>
         <netty.version>4.0.0.CR3</netty.version>
         <javassist.version>3.17.1-GA</javassist.version>
@@ -59,6 +60,12 @@
             <version>${protobuf.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.googlecode.protobuf-java-format</groupId>
+            <artifactId>protobuf-java-format</artifactId>
+            <version>${protobuf.java.format.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-transport</artifactId>
             <version>${netty.version}</version>
@@ -71,6 +78,11 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http</artifactId>
             <version>${netty.version}</version>
         </dependency>
         <dependency>

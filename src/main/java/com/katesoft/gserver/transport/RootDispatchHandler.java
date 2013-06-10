@@ -2,6 +2,7 @@ package com.katesoft.gserver.transport;
 
 import static com.google.common.base.Objects.toStringHelper;
 import static com.katesoft.gserver.misc.Misc.getPid;
+import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static java.lang.System.currentTimeMillis;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -10,6 +11,14 @@ import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.PongWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
+import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 
@@ -21,19 +30,25 @@ import org.jasypt.util.text.BasicTextEncryptor;
 
 import com.google.common.base.Supplier;
 import com.google.common.util.concurrent.Atomics;
+import com.google.protobuf.ExtensionRegistry;
+import com.googlecode.protobuf.format.JsonFormat;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
+import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
 @Sharable
-class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseCommand> implements Closeable, Supplier<ChannelGroup> {
+class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
+    private static AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
 
     private final ChannelGroup connections = new DefaultChannelGroup();
     private final TransportMessageListener eventBus;
+    private final ExtensionRegistry extensionRegistry;
 
-    RootDispatchHandler(TransportMessageListener ml) {
+    RootDispatchHandler(TransportMessageListener ml, ExtensionRegistry registry) {
         this.eventBus = ml;
+        this.extensionRegistry = registry;
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -43,9 +58,46 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         connections.add( ch );
     }
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) throws Exception {
+    public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
         SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
-        eventBus.onMessage( cmd, userConnection );
+        if ( msg instanceof BaseCommand ) {
+            userConnection.connectionType = ConnectionType.TCP;
+            eventBus.onMessage( (BaseCommand) msg, userConnection );
+        }
+        else if ( msg instanceof FullHttpRequest ) {
+            FullHttpRequest httpMsg = (FullHttpRequest) msg;
+            WebSocketServerHandshaker handshaker = new WebSocketServerHandshakerFactory(
+                    "ws://" + httpMsg.headers().get( HOST ) + "/websockets",
+                    null,
+                    false ).newHandshaker( httpMsg );
+            if ( handshaker == null ) {
+                WebSocketServerHandshakerFactory.sendUnsupportedWebSocketVersionResponse( ctx.channel() );
+            }
+            else {
+                handshaker.handshake( ctx.channel(), httpMsg );
+                ctx.channel().attr( WS_HANDSHAKER_ATTR ).set( handshaker );
+            }
+            userConnection.connectionType = ConnectionType.WEBSOCKETS;
+        }
+        else if ( msg instanceof WebSocketFrame ) {
+            WebSocketFrame frame = (WebSocketFrame) msg;
+            if ( frame instanceof CloseWebSocketFrame ) {
+                frame.retain();
+                ctx.attr( WS_HANDSHAKER_ATTR ).get().close( ctx.channel(), (CloseWebSocketFrame) frame );
+                ctx.attr( WS_HANDSHAKER_ATTR ).remove();
+            }
+            else if ( frame instanceof PingWebSocketFrame ) {
+                frame.content().retain();
+                ctx.channel().write( new PongWebSocketFrame( frame.content() ) );
+                return;
+            }
+            else if ( frame instanceof TextWebSocketFrame ) {
+                String text = ( (TextWebSocketFrame) frame ).text();
+                Builder bcmdb = BaseCommand.newBuilder();
+                JsonFormat.merge( text, extensionRegistry, bcmdb );
+                eventBus.onMessage( bcmdb.build(), userConnection );
+            }
+        }
     }
     @Override
     public void close() {
@@ -74,6 +126,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         private final SocketChannel ch;
         private final ChannelGroup connections;
         private final AtomicReference<Player> player = Atomics.newReference();
+        private ConnectionType connectionType = ConnectionType.TCP;
 
         public SocketUserConnection(SocketChannel ch, ChannelGroup connections) {
             this.ch = ch;
@@ -103,7 +156,19 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         }
         @Override
         public Future<Void> writeAsync(BaseCommand message) {
-            return ch.write( message );
+            Future<Void> f = null;
+            switch ( connectionType ) {
+                case TCP:
+                    f = ch.write( message );
+                    break;
+                case WEBSOCKETS:
+                    ch.write( new TextWebSocketFrame( JsonFormat.printToString( message ) ) );
+                    break;
+                case FLASH:
+                    f = ch.write( message );
+                    break;
+            }
+            return f;
         }
         @Override
         public void writeSync(BaseCommand message) {
@@ -127,6 +192,10 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<BaseComman
         @Override
         public Player getAssociatedPlayer() {
             return player.get();
+        }
+        @Override
+        public ConnectionType connectionType() {
+            return connectionType;
         }
         @Override
         public void close() {

@@ -1,5 +1,6 @@
 package com.katesoft.gserver.transport;
 
+import static com.google.common.net.HostAndPort.fromParts;
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 import static com.katesoft.gserver.misc.Misc.shortHostname;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -13,6 +14,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
 import io.netty.handler.logging.LogLevel;
@@ -38,15 +41,17 @@ public class NettyServer implements TransportServer {
     private RootDispatchHandler root;
 
     @Override
-    public void startServer(final HostAndPort binding, TransportMessageListener rootMessageListener) {
-        root = new RootDispatchHandler( rootMessageListener );
-
+    public void startServer(final HostAndPort tcp, final HostAndPort websockets, TransportMessageListener rootMessageListener) {
         final ExtensionRegistry registry = ExtensionRegistry.newInstance();
         Commands.registerAllExtensions( registry );
         RoulleteCommands.registerAllExtensions( registry );
 
-        final ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap
+        root = new RootDispatchHandler( rootMessageListener, registry );
+
+        final ServerBootstrap tcpBootstrap = new ServerBootstrap();
+        final ServerBootstrap webSocksBootstap = new ServerBootstrap();
+
+        tcpBootstrap
                 .group( eventGroup )
                 .channel( NioServerSocketChannel.class )
                 .handler( new LoggingHandler( LogLevel.DEBUG ) )
@@ -58,14 +63,29 @@ public class NettyServer implements TransportServer {
                     }
                 } );
 
+        webSocksBootstap
+                .group( eventGroup )
+                .channel( NioServerSocketChannel.class )
+                .handler( new LoggingHandler( LogLevel.DEBUG ) )
+                .childHandler( new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) {
+                        ChannelPipeline p = ch.pipeline();
+                        p.addLast( "codec-http", new HttpServerCodec() );
+                        p.addLast( "aggregator", new HttpObjectAggregator( 65536 ) );
+                        p.addLast( root );
+                    }
+                } );
+
         long took = Misc.benchmark( new Runnable() {
             @Override
             public void run() {
-                bootstrap.bind( binding.getHostText(), binding.getPort() ).syncUninterruptibly();
+                tcpBootstrap.bind( tcp.getHostText(), tcp.getPort() ).syncUninterruptibly();
+                webSocksBootstap.bind( websockets.getHostText(), websockets.getPort() ).syncUninterruptibly();
             }
         } );
 
-        logger.info( "{} :=> {} started in {} ms", binding, bootstrap, took );
+        logger.info( "{} :=> {}, {} :=> {} started in {} ms", tcp, tcpBootstrap, websockets, webSocksBootstap, took );
     }
     @Override
     public void close() {
@@ -113,7 +133,7 @@ public class NettyServer implements TransportServer {
     }
     public static void main(String... args) throws InterruptedException {
         NettyServer s = new NettyServer();
-        s.startServer( HostAndPort.fromParts( shortHostname(), 8189 ), new TransportMessageListener.EchoMessageListener() );
+        s.startServer( fromParts( shortHostname(), 8189 ), null, new TransportMessageListener.EchoMessageListener() );
         synchronized ( s ) {
             s.wait();
         }

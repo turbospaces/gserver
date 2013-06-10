@@ -11,7 +11,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 
 import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,34 +30,41 @@ import com.katesoft.gserver.core.MessageListenerDispatcher;
 import com.katesoft.gserver.games.RouletteGame;
 import com.katesoft.gserver.misc.Misc;
 import com.katesoft.gserver.spi.PlatformInterface;
+import com.katesoft.gserver.transport.ConnectionType;
 import com.katesoft.gserver.transport.NettyServer;
 import com.katesoft.gserver.transport.NettyTcpClient;
 
 public abstract class AbstractEmbeddedTest {
-    public static final CommandsQualifierCodec CODEC = new CommandsQualifierCodec.DefaultCommandsCodec();
-    public static final ScheduledExecutorService SCHEDULED_EXEC = newSingleThreadScheduledExecutor();
+    static final CommandsQualifierCodec CODEC = new CommandsQualifierCodec.DefaultCommandsCodec();
+    static final ScheduledExecutorService SCHEDULED_EXEC = newSingleThreadScheduledExecutor();
 
     protected static NettyServer s;
     protected static NettyTcpClient c;
     protected static UserConnection uc;
+    protected ConnectionType connectionType = ConnectionType.TCP;
 
     protected Logger logger = LoggerFactory.getLogger( getClass() );
 
     @SuppressWarnings("unchecked")
-    @BeforeClass
-    public static void beforeClass() {
-        AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
-        PlatformInterface platform = new PlatformInterface.MockPlatformInterface( ctx, CODEC, RouletteGame.class );
-        MessageListenerDispatcher mld = new MessageListenerDispatcher( platform );
+    @Before
+    public void setup() {
+        if ( s == null ) {
+            AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
+            PlatformInterface platform = new PlatformInterface.MockPlatformInterface( ctx, CODEC, RouletteGame.class );
+            MessageListenerDispatcher mld = new MessageListenerDispatcher( platform );
 
-        HostAndPort hostAndPort = fromParts( shortHostname(), nextAvailablePort() );
-        s = new NettyServer();
-        s.startServer( hostAndPort, mld );
+            HostAndPort tcp = fromParts( shortHostname(), nextAvailablePort() );
+            HostAndPort webSocket = fromParts( shortHostname(), nextAvailablePort() );
+            s = new NettyServer();
+            s.startServer( tcp, webSocket, mld );
 
-        c = new NettyTcpClient( hostAndPort, CODEC );
-        c.setCommandsQualifierCodec( CODEC );
-        c.run();
-        uc = s.awaitForHandshake( c );
+            HostAndPort x = ( connectionType == ConnectionType.TCP ? tcp : webSocket );
+            c = new NettyTcpClient( x, CODEC, connectionType );
+            c.setCommandsQualifierCodec( CODEC );
+            c.run();
+
+            uc = s.awaitForHandshake( c );
+        }
     }
     @AfterClass
     public static void afterClass() {
