@@ -1,9 +1,6 @@
 package com.katesoft.gserver.server;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.net.HostAndPort.fromParts;
-import static com.katesoft.gserver.misc.Misc.nextAvailablePort;
-import static com.katesoft.gserver.misc.Misc.shortHostname;
 import static com.katesoft.gserver.misc.Misc.shutdownExecutor;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
@@ -19,6 +16,7 @@ import com.google.common.net.HostAndPort;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GamePlayContext;
 import com.katesoft.gserver.api.GamePlayContext.AbstractGamePlayContext;
+import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
@@ -33,6 +31,7 @@ import com.katesoft.gserver.spi.PlatformInterface;
 import com.katesoft.gserver.transport.ConnectionType;
 import com.katesoft.gserver.transport.NettyServer;
 import com.katesoft.gserver.transport.NettyTcpClient;
+import com.katesoft.gserver.transport.ProxyServer;
 
 public abstract class AbstractEmbeddedTest {
     static final CommandsQualifierCodec CODEC = new CommandsQualifierCodec.DefaultCommandsCodec();
@@ -45,25 +44,33 @@ public abstract class AbstractEmbeddedTest {
 
     protected Logger logger = LoggerFactory.getLogger( getClass() );
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked" })
     @Before
-    public void setup() {
+    public void setup() throws Exception {
         if ( s == null ) {
             AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
             PlatformInterface platform = new PlatformInterface.MockPlatformInterface( ctx, CODEC, RouletteGame.class );
             MessageListenerDispatcher mld = new MessageListenerDispatcher( platform );
 
-            HostAndPort tcp = fromParts( shortHostname(), nextAvailablePort() );
-            HostAndPort webSocket = fromParts( shortHostname(), nextAvailablePort() );
-            s = new NettyServer();
-            s.startServer( tcp, webSocket, mld );
+            TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
 
-            HostAndPort x = ( connectionType == ConnectionType.TCP ? tcp : webSocket );
+            s = new NettyServer();
+            s.startServer( settings, mld );
+
+            HostAndPort x = ( connectionType == ConnectionType.TCP ? settings.tcp : settings.websockets.get() );
+
+            ProxyServer proxy = setupProxy( s, x );
+
+            if ( proxy != null ) {
+                x = proxy.getProxyAddress();
+            }
+
             c = new NettyTcpClient( x, CODEC, connectionType );
             c.setCommandsQualifierCodec( CODEC );
             c.run();
-
-            uc = s.awaitForHandshake( c );
+            if ( proxy == null ) {
+                uc = s.awaitForClientHandshake( c.get() );
+            }
         }
     }
     @AfterClass
@@ -75,6 +82,10 @@ public abstract class AbstractEmbeddedTest {
         finally {
             s.close();
         }
+    }
+    @SuppressWarnings("unused")
+    protected ProxyServer setupProxy(NettyServer ns, HostAndPort actualPort) throws Exception {
+        return null;
     }
     protected void login() throws InterruptedException, ExecutionException {
         LoginCommand cmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();

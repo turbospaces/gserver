@@ -19,6 +19,7 @@
         <jna.version>3.5.2</jna.version>
         <jsr305.version>2.0.1</jsr305.version>
         <guava.version>14.0.1</guava.version>
+        <apache.commons.lang3.version>3.1</apache.commons.lang3.version>
 
         <!-- logging -->
         <slf4j.version>1.7.2</slf4j.version>
@@ -30,7 +31,7 @@
         <junit-benchmarks.version>0.6.0</junit-benchmarks.version>
         <protobuf.version>2.5.0</protobuf.version>
         <protobuf.java.format.version>1.2</protobuf.java.format.version>
-        
+
         <jasypt.version>1.9.0</jasypt.version>
         <netty.version>4.0.0.CR3</netty.version>
         <javassist.version>3.17.1-GA</javassist.version>
@@ -131,6 +132,11 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${apache.commons.lang3.version}</version>
         </dependency>
 
         <dependency>

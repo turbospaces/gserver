@@ -26,7 +26,7 @@ import java.net.SocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.net.HostAndPort;
+import com.google.common.base.Optional;
 import com.google.protobuf.ExtensionRegistry;
 import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
@@ -34,23 +34,26 @@ import com.katesoft.gserver.commands.Commands;
 import com.katesoft.gserver.games.roullete.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
 
-public class NettyServer implements TransportServer {
+public class NettyServer implements TransportServer<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
+    private TransportMessageListener listener;
     private RootDispatchHandler root;
+    private TransportServerSettings settings;
 
     @Override
-    public void startServer(final HostAndPort tcp, final HostAndPort websockets, TransportMessageListener rootMessageListener) {
+    public void startServer(final TransportServer.TransportServerSettings s, TransportMessageListener l) {
+        this.settings = s;
+        this.listener = l;
+
         final ExtensionRegistry registry = ExtensionRegistry.newInstance();
         Commands.registerAllExtensions( registry );
         RoulleteCommands.registerAllExtensions( registry );
 
-        root = new RootDispatchHandler( rootMessageListener, registry );
+        root = new RootDispatchHandler( l, registry );
 
         final ServerBootstrap tcpBootstrap = new ServerBootstrap();
-        final ServerBootstrap webSocksBootstap = new ServerBootstrap();
-
         tcpBootstrap
                 .group( eventGroup )
                 .channel( NioServerSocketChannel.class )
@@ -62,30 +65,25 @@ public class NettyServer implements TransportServer {
                         registerProtobufCodecs( p, registry ).addLast( root );
                     }
                 } );
+        tcpBootstrap.bind( settings.tcp.getHostText(), settings.tcp.getPort() ).syncUninterruptibly();
 
-        webSocksBootstap
-                .group( eventGroup )
-                .channel( NioServerSocketChannel.class )
-                .handler( new LoggingHandler( LogLevel.DEBUG ) )
-                .childHandler( new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    public void initChannel(SocketChannel ch) {
-                        ChannelPipeline p = ch.pipeline();
-                        p.addLast( "codec-http", new HttpServerCodec() );
-                        p.addLast( "aggregator", new HttpObjectAggregator( 65536 ) );
-                        p.addLast( root );
-                    }
-                } );
-
-        long took = Misc.benchmark( new Runnable() {
-            @Override
-            public void run() {
-                tcpBootstrap.bind( tcp.getHostText(), tcp.getPort() ).syncUninterruptibly();
-                webSocksBootstap.bind( websockets.getHostText(), websockets.getPort() ).syncUninterruptibly();
-            }
-        } );
-
-        logger.info( "{} :=> {}, {} :=> {} started in {} ms", tcp, tcpBootstrap, websockets, webSocksBootstap, took );
+        if ( settings.websockets.isPresent() ) {
+            final ServerBootstrap webSocksBootstap = new ServerBootstrap();
+            webSocksBootstap
+                    .group( eventGroup )
+                    .channel( NioServerSocketChannel.class )
+                    .handler( new LoggingHandler( LogLevel.DEBUG ) )
+                    .childHandler( new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        public void initChannel(SocketChannel ch) {
+                            ChannelPipeline p = ch.pipeline();
+                            p.addLast( "codec-http", new HttpServerCodec() );
+                            p.addLast( "aggregator", new HttpObjectAggregator( 65536 ) );
+                            p.addLast( root );
+                        }
+                    } );
+            webSocksBootstap.bind( settings.websockets.get().getHostText(), settings.websockets.get().getPort() ).syncUninterruptibly();
+        }
     }
     @Override
     public void close() {
@@ -100,7 +98,6 @@ public class NettyServer implements TransportServer {
                 }
             }
         } );
-
         logger.info( "Closed Netty Acceptor in = {} ms", took );
     }
     @Override
@@ -111,17 +108,23 @@ public class NettyServer implements TransportServer {
     public int connectionsCount() {
         return root.get().size();
     }
-    public UserConnection awaitForHandshake(NettyTcpClient client) {
-        SocketChannel sch = client.get();
+    @Override
+    public UserConnection awaitForClientHandshake(SocketChannel clientChannel) {
         for ( ;; ) {
             for ( Channel c : root.get() ) {
                 SocketAddress remoteAddress = c.remoteAddress();
-                if ( sch.localAddress().equals( remoteAddress ) ) {
+                if ( clientChannel.localAddress().equals( remoteAddress ) ) {
                     return root.find( (SocketChannel) c );
                 }
             }
             sleepUninterruptibly( 1, MILLISECONDS );
         }
+    }
+    public TransportServerSettings transportSettings() {
+        return settings;
+    }
+    public TransportMessageListener transportMessageListener() {
+        return listener;
     }
     public static ChannelPipeline registerProtobufCodecs(ChannelPipeline p, ExtensionRegistry registry) {
         p.addLast( "frameDecoder", new LengthFieldBasedFrameDecoder( 1048576, 0, 4, 0, 4 ) );
@@ -132,8 +135,12 @@ public class NettyServer implements TransportServer {
         return p;
     }
     public static void main(String... args) throws InterruptedException {
+        TransportServer.TransportServerSettings settings = new TransportServer.TransportServerSettings();
+        settings.tcp = fromParts( shortHostname(), 8189 );
+        settings.websockets = Optional.absent();
+
         NettyServer s = new NettyServer();
-        s.startServer( fromParts( shortHostname(), 8189 ), null, new TransportMessageListener.EchoMessageListener() );
+        s.startServer( settings, new TransportMessageListener.EchoMessageListener() );
         synchronized ( s ) {
             s.wait();
         }

@@ -13,8 +13,12 @@ import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinReply;
 import com.katesoft.gserver.server.AbstractEmbeddedTest;
+import com.katesoft.gserver.transport.ConnectionType;
 
 public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
+    public RouletteEmbeddedTest() {
+        connectionType = ConnectionType.WEBSOCKETS;
+    }
 
     @Test
     public void works() throws InterruptedException, ExecutionException {
@@ -23,7 +27,10 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
 
         RouletteBetPosition position = RouletteBetPosition.values()[RouletteBetPosition.values().length - 4];
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();
-        RouletteSpinReply reply = c.callAsync( RouletteSpinCommand.cmd, req, openGamePlay.getSessionId(), true ).get().getExtension( RouletteSpinReply.cmd );
+        RouletteSpinReply reply = c
+                .callAsync( RouletteSpinCommand.cmd, req, openGamePlay.getSessionId(), true )
+                .get()
+                .getExtension( RouletteSpinReply.cmd );
         assertSame( position, reply.getPosition() );
         assertNotNull( reply.getBetResult() );
         logger.trace( reply.toString() );

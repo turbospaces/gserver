@@ -23,7 +23,6 @@ import io.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 
-import java.io.Closeable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.AbstractMap;
@@ -34,7 +33,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
 import com.google.common.net.HostAndPort;
@@ -44,20 +42,21 @@ import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage.GeneratedExtension;
 import com.googlecode.protobuf.format.JsonFormat;
 import com.googlecode.protobuf.format.JsonFormat.ParseException;
+import com.katesoft.gserver.api.TransportClient;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.core.Commands;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 
-public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChannel> {
+public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
     private final AtomicLong seq = new AtomicLong();
     private final ConcurrentMap<String, SettableFuture<BaseCommand>> corr = Maps.newConcurrentMap();
-    private final CommandsQualifierCodec codec;
     private final ConnectionType connectionType;
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
     private final HostAndPort hostAndPort;
+    private CommandsQualifierCodec codec;
     private SocketChannel sch;
     private ChannelHandlerContext channelCtx;
 
@@ -123,7 +122,6 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                                 public void messageReceived(ChannelHandlerContext ctx, Object msg) throws ParseException {
                                     if ( !handshaker.isHandshakeComplete() ) {
                                         handshaker.finishHandshake( ctx.channel(), (FullHttpResponse) msg );
-                                        System.out.println( "WebSocket Client connected!" );
                                         l.countDown();
                                         return;
                                     }
@@ -155,6 +153,7 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
     public SocketChannel get() {
         return sch;
     }
+    @Override
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedExtension<BaseCommand, Type> ext, Type t, String sessionId, boolean debug) {
         BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( ext, t );
@@ -181,7 +180,11 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
                 channelCtx.write( bcmd );
             }
             else if ( connectionType == ConnectionType.WEBSOCKETS ) {
-                channelCtx.write( new TextWebSocketFrame( JsonFormat.printToString( bcmd ) ) );
+                String json = JsonFormat.printToString( bcmd );
+                if ( debug ) {
+                    logger.debug( "sending {} via websockets", json );
+                }
+                channelCtx.write( new TextWebSocketFrame( json ) );
             }
             channelCtx.flush();
         }
@@ -200,5 +203,8 @@ public class NettyTcpClient implements Runnable, Closeable, Supplier<SocketChann
             eventGroup.shutdownGracefully();
         }
     }
-    public void setCommandsQualifierCodec(CommandsQualifierCodec codec) {}
+    @Override
+    public void setCommandsQualifierCodec(CommandsQualifierCodec commandsCodec) {
+        this.codec = commandsCodec;
+    }
 }
