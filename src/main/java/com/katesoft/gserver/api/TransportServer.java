@@ -11,7 +11,7 @@ import com.google.common.net.HostAndPort;
 import com.katesoft.gserver.transport.TransportMessageListener;
 
 public interface TransportServer<ChannelType> extends Closeable {
-    void startServer(TransportServerSettings settings, TransportMessageListener rootMessageListener) throws Exception;
+    void startServer(TransportServerSettings settings, TransportMessageListener ml) throws Exception;
     UserConnection getUserConnection(String id);
     int connectionsCount();
     UserConnection awaitForClientHandshake(ChannelType channel);

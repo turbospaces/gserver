@@ -17,6 +17,11 @@ public interface GamePlayContext {
     void creditWin(BetWrapper bet);
     ScheduledFuture<?> schedule(Runnable r, long period, TimeUnit timeUnit);
 
+    //
+    //
+    // abstract implementation in place.
+    //
+    //
     public static abstract class AbstractGamePlayContext implements GamePlayContext {
         private final Logger logger = LoggerFactory.getLogger( getClass() );
 
@@ -49,10 +54,15 @@ public interface GamePlayContext {
         public void creditWin(BetWrapper bet) {}
     }
 
+    //
+    //
+    // calculate return to player statistics.
+    //
+    //
     public static class RTP extends AbstractGamePlayContext {
         private final AtomicInteger wins = new AtomicInteger();
         private final AtomicInteger loses = new AtomicInteger();
-        private final AtomicLong winsAmount = new AtomicLong();
+        private final AtomicLong winAmount = new AtomicLong();
         private final AtomicLong loseAmount = new AtomicLong();
 
         public RTP(ScheduledExecutorService scheduledExec) {
@@ -62,7 +72,7 @@ public interface GamePlayContext {
         public void creditWin(BetWrapper bet) {
             if ( bet.isWin() ) {
                 wins.incrementAndGet();
-                winsAmount.addAndGet( bet.betAmountUnsigned() );
+                winAmount.addAndGet( bet.betAmountUnsigned() );
             }
             else {
                 loses.incrementAndGet();
@@ -70,10 +80,10 @@ public interface GamePlayContext {
             }
         }
         public long totalWin() {
-            long l1 = winsAmount.get(), l2 = loseAmount.get();
+            long l1 = winAmount.get(), l2 = loseAmount.get();
             for ( ;; ) {
-                long r = winsAmount.get() - loseAmount.get();
-                if ( l1 == winsAmount.get() && l2 == loseAmount.get() ) {
+                long r = winAmount.get() - loseAmount.get();
+                if ( l1 == winAmount.get() && l2 == loseAmount.get() ) {
                     return r;
                 }
             }

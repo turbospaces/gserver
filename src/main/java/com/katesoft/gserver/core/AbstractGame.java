@@ -1,22 +1,23 @@
 package com.katesoft.gserver.core;
 
+import static com.google.common.base.Suppliers.memoize;
+
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
 import com.google.common.collect.Lists;
 import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.Game;
-import com.katesoft.gserver.api.GameCommandsInterpreter;
+import com.katesoft.gserver.api.GameCommandInterpreter;
 import com.katesoft.gserver.api.GamePlayContext;
 
 public abstract class AbstractGame implements Game {
     protected transient GamePlayContext gamePlayContext;
-    protected transient GameCommandsInterpreter interpreter;
-    private transient final Supplier<List<ScheduledFuture<?>>> scheduledTasks = Suppliers.memoize( new Supplier<List<ScheduledFuture<?>>>() {
+    protected transient GameCommandInterpreter interpreter;
+    private transient final Supplier<List<ScheduledFuture<?>>> scheduledTasks = memoize( new Supplier<List<ScheduledFuture<?>>>() {
         @Override
         public List<ScheduledFuture<?>> get() {
             return Lists.newLinkedList();
@@ -49,7 +50,7 @@ public abstract class AbstractGame implements Game {
         return getClass().getSimpleName();
     }
     @Override
-    public GameCommandsInterpreter commandsInterpreter() {
+    public GameCommandInterpreter commandsInterpreter() {
         return interpreter;
     }
     @Override

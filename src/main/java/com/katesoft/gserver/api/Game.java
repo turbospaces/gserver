@@ -5,9 +5,9 @@ import java.io.Closeable;
 public interface Game extends Closeable {
     void init(GamePlayContext ctx);
     String displayName();
-    GameCommandsInterpreter commandsInterpreter();
+    GameCommandInterpreter commandsInterpreter();
     /**
-     * close game on logout command. no further commands can't be accepted by game instance.
+     * close game on logout command (typically means that user closed game play for particular game).
      */
     @Override
     void close();

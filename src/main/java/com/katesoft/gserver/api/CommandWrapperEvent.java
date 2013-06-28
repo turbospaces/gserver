@@ -9,7 +9,7 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.UnknownCommadException;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 
-public class CommandWrapperEvent {
+public final class CommandWrapperEvent {
     private final BaseCommand cmd;
     private final CommandsQualifierCodec codec;
     private final PlayerSession playerSession;

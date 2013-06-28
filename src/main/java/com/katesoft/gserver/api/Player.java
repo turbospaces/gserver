@@ -11,10 +11,15 @@ public interface Player extends Closeable {
     String email();
     boolean addPlayerSession(PlayerSession s);
     /**
-     * close all player session gracefully(method called upon user logout command).
+     * close all player sessions gracefully(method called upon user logout command).
      */
     @Override
     void close();
+    /**
+     * close specific user session by ID.
+     * 
+     * @param sessionId - player session ID.
+     */
     void closePlayerSession(String sessionId);
     /**
      * send the command to the player session(s) for interpretation.

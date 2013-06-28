@@ -1,5 +1,5 @@
 package com.katesoft.gserver.api;
 
-public interface GameCommandsInterpreter {
+public interface GameCommandInterpreter {
     void interpretCommand(CommandWrapperEvent cmd) throws Exception;
 }

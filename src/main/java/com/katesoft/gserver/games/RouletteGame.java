@@ -16,7 +16,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.CommandWrapperEvent;
-import com.katesoft.gserver.api.GameCommandsInterpreter;
+import com.katesoft.gserver.api.GameCommandInterpreter;
 import com.katesoft.gserver.core.AbstractGame;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
@@ -27,7 +27,7 @@ public class RouletteGame extends AbstractGame {
     static final Map<Integer, Set<PositionPayout>> NUMS = Maps.newHashMap();
 
     public RouletteGame() {
-        interpreter = new GameCommandsInterpreter() {
+        interpreter = new GameCommandInterpreter() {
             @Override
             public void interpretCommand(CommandWrapperEvent e) {
                 if ( RouletteSpinCommand.class == e.cmdClass() ) {
