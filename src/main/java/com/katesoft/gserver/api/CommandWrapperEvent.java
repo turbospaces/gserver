@@ -22,9 +22,10 @@ public final class CommandWrapperEvent {
     }
     /**
      * @return class of command(translate from the qualifier via codec).
+     * @throws Exception if the target class can't be decoded from message by qualifier.
      */
-    public Class<? extends GeneratedMessage> cmdClass() {
-        return codec.qualifierToType().apply( cmd.getQualifier() );
+    public Class<? extends GeneratedMessage> cmdClass() throws Exception {
+        return codec.decodec().apply( cmd.getQualifier() );
     }
     /**
      * @return command itself wrapped into base command, you would need to get

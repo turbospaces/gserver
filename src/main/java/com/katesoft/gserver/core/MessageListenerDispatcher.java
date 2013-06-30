@@ -25,7 +25,7 @@ public class MessageListenerDispatcher implements TransportMessageListener {
     @Override
     public void onMessage(BaseCommand cmd, UserConnection uc) throws Exception {
         String qualifier = cmd.getQualifier();
-        Class<? extends GeneratedMessage> type = platformInterface.commandsCodec().qualifierToType().apply( qualifier );
+        Class<? extends GeneratedMessage> type = platformInterface.commandsCodec().decodec().apply( qualifier );
 
         if ( cmd.getDebug() ) {
             logger.debug( "onMessage(connection={})={}", uc.id(), cmd );

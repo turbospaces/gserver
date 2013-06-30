@@ -29,7 +29,7 @@ public class RouletteGame extends AbstractGame {
     public RouletteGame() {
         interpreter = new GameCommandInterpreter() {
             @Override
-            public void interpretCommand(CommandWrapperEvent e) {
+            public void interpretCommand(CommandWrapperEvent e) throws Exception {
                 if ( RouletteSpinCommand.class == e.cmdClass() ) {
                     RouletteSpinCommand spin = e.getCmd().getExtension( RouletteSpinCommand.cmd );
 

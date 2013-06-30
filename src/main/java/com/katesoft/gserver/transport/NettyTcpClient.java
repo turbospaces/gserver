@@ -25,11 +25,12 @@ import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.AbstractMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,10 +155,10 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
         return sch;
     }
     @Override
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ "unchecked" })
     public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedExtension<BaseCommand, Type> ext, Type t, String sessionId, boolean debug) {
         BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( ext, t );
-        codec.qualifierWriter().apply( new AbstractMap.SimpleEntry( cmd, t ) );
+        codec.codec().apply( (Pair<Builder, Object>) ImmutablePair.of( cmd, t ) );
 
         long seqN = seq.incrementAndGet();
         MessageHeaders headers = MessageHeaders

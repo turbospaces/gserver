@@ -2,8 +2,10 @@ package com.katesoft.gserver.core;
 
 import static java.lang.System.currentTimeMillis;
 
-import java.util.AbstractMap;
 import java.util.UUID;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
@@ -24,7 +26,7 @@ public abstract class Commands {
     public static <T> BaseCommand toReply(CommandWrapperEvent e, GeneratedMessage.GeneratedExtension<BaseCommand, T> extension, T reply) {
         return toReply( e.getCmd(), e.getCodec(), extension, reply );
     }
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ "unchecked" })
     public static <T> BaseCommand toReply(BaseCommand cmd, CommandsQualifierCodec codec,
                                           GeneratedMessage.GeneratedExtension<BaseCommand, T> extension, T reply) {
         Builder builder = BaseCommand
@@ -32,9 +34,9 @@ public abstract class Commands {
                 .setProtocolVersion( cmd.getProtocolVersion() )
                 .setHeaders( cmd.getHeaders().toBuilder().setMessageTimestamp( currentTimeMillis() ).build() );
         builder.setExtension( extension, reply );
-        return codec.qualifierWriter().apply( new AbstractMap.SimpleEntry( builder, reply ) ).build();
+        return codec.codec().apply( (Pair<Builder, Object>) ImmutablePair.of( builder, reply ) ).build();
     }
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ "unchecked" })
     public static <T> CommandWrapperEvent mockCommandEvent(GeneratedMessage.GeneratedExtension<BaseCommand, T> extension, T t,
                                                            PlayerSession playerSession) {
         long tmstmp = System.currentTimeMillis();
@@ -48,7 +50,7 @@ public abstract class Commands {
                 .build();
 
         Builder b = BaseCommand.newBuilder().setProtocolVersion( "1.0" ).setExtension( extension, t ).setHeaders( headers );
-        b = qualifierCodec.qualifierWriter().apply( new AbstractMap.SimpleEntry( b, t ) );
+        b = qualifierCodec.codec().apply( (Pair<Builder, Object>) ImmutablePair.of( b, t ) );
 
         return new CommandWrapperEvent( b.build(), qualifierCodec, playerSession );
     }

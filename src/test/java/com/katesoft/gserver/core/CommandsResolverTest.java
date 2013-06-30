@@ -2,25 +2,22 @@ package com.katesoft.gserver.core;
 
 import static junit.framework.Assert.assertSame;
 
-import java.util.AbstractMap;
-
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.Test;
 
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
-import com.katesoft.gserver.core.Commands;
-import com.katesoft.gserver.core.CommandsQualifierCodec;
 
 public class CommandsResolverTest {
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ })
     @Test
     public void works() {
         Commands.newMessageRegistry();
         CommandsQualifierCodec.DefaultCommandsCodec r = new CommandsQualifierCodec.DefaultCommandsCodec();
         LoginCommand logCmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();
-        r.qualifierWriter().apply( new AbstractMap.SimpleEntry( BaseCommand.newBuilder(), logCmd ) );
-        assertSame( LoginCommand.class, r.qualifierToType().apply( LoginCommand.class.getSimpleName() ) );
+        r.codec().apply( ImmutablePair.of( BaseCommand.newBuilder(), (Object) logCmd ) );
+        assertSame( LoginCommand.class, r.decodec().apply( LoginCommand.class.getSimpleName() ) );
         r.close();
     }
 }
