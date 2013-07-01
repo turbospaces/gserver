@@ -39,7 +39,7 @@ import com.google.common.collect.Maps;
 import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import com.google.protobuf.ExtensionRegistry;
+import com.google.protobuf.GeneratedMessage;
 import com.google.protobuf.GeneratedMessage.GeneratedExtension;
 import com.googlecode.protobuf.format.JsonFormat;
 import com.googlecode.protobuf.format.JsonFormat.ParseException;
@@ -47,7 +47,6 @@ import com.katesoft.gserver.api.TransportClient;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
-import com.katesoft.gserver.core.Commands;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 
 public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> {
@@ -57,7 +56,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
     private final ConnectionType connectionType;
     private final EventLoopGroup eventGroup = new NioEventLoopGroup();
     private final HostAndPort hostAndPort;
-    private CommandsQualifierCodec codec;
+    private final CommandsQualifierCodec codec;
     private SocketChannel sch;
     private ChannelHandlerContext channelCtx;
 
@@ -68,7 +67,6 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
     }
     @Override
     public void run() {
-        final ExtensionRegistry registry = Commands.newMessageRegistry();
         final CountDownLatch l = new CountDownLatch( 1 );
         final Bootstrap b = new Bootstrap();
 
@@ -82,7 +80,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                     public void initChannel(SocketChannel ch) throws URISyntaxException {
                         ChannelPipeline p = ch.pipeline();
                         if ( connectionType == ConnectionType.TCP ) {
-                            NettyServer.registerProtobufCodecs( p, registry );
+                            NettyServer.registerProtobufCodecs( p, codec.extensionRegistry() );
                             p.addLast( new ChannelInboundMessageHandlerAdapter<BaseCommand>() {
                                 @Override
                                 public void channelActive(ChannelHandlerContext ctx) {
@@ -131,7 +129,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                                     if ( frame instanceof TextWebSocketFrame ) {
                                         TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
                                         Builder bcmdb = BaseCommand.newBuilder();
-                                        JsonFormat.merge( textFrame.text(), registry, bcmdb );
+                                        JsonFormat.merge( textFrame.text(), codec.extensionRegistry(), bcmdb );
                                         BaseCommand cmd = bcmdb.build();
                                         SettableFuture<BaseCommand> f = corr.remove( cmd.getHeaders().getCorrelationID() );
                                         if ( f != null ) {
@@ -158,7 +156,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
     @SuppressWarnings({ "unchecked" })
     public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedExtension<BaseCommand, Type> ext, Type t, String sessionId, boolean debug) {
         BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( ext, t );
-        codec.codec().apply( (Pair<Builder, Object>) ImmutablePair.of( cmd, t ) );
+        codec.encoder().apply( (Pair<Builder, GeneratedMessage>) ImmutablePair.of( cmd, t ) );
 
         long seqN = seq.incrementAndGet();
         MessageHeaders headers = MessageHeaders
@@ -203,9 +201,5 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
         if ( eventGroup != null ) {
             eventGroup.shutdownGracefully();
         }
-    }
-    @Override
-    public void setCommandsQualifierCodec(CommandsQualifierCodec commandsCodec) {
-        this.codec = commandsCodec;
     }
 }

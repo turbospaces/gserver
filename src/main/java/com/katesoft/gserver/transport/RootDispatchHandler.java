@@ -12,6 +12,7 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PongWebSocketFrame;
@@ -19,6 +20,7 @@ import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
+import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 
@@ -27,10 +29,11 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jasypt.util.text.BasicTextEncryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Supplier;
 import com.google.common.util.concurrent.Atomics;
-import com.google.protobuf.ExtensionRegistry;
 import com.googlecode.protobuf.format.JsonFormat;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.UserConnection;
@@ -38,17 +41,16 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
 @Sharable
-class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {    
+class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {
+    private final Logger logger = LoggerFactory.getLogger( getClass() );
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
     private static AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
-    
+
     private final ChannelGroup connections = new DefaultChannelGroup();
     private final TransportMessageListener eventBus;
-    private final ExtensionRegistry extensionRegistry;
 
-    RootDispatchHandler(TransportMessageListener ml, ExtensionRegistry registry) {
+    RootDispatchHandler(TransportMessageListener ml) {
         this.eventBus = ml;
-        this.extensionRegistry = registry;
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -83,8 +85,18 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
             WebSocketFrame frame = (WebSocketFrame) msg;
             if ( frame instanceof CloseWebSocketFrame ) {
                 frame.retain();
-                ctx.attr( WS_HANDSHAKER_ATTR ).get().close( ctx.channel(), (CloseWebSocketFrame) frame );
-                ctx.attr( WS_HANDSHAKER_ATTR ).remove();
+                Attribute<WebSocketServerHandshaker> attr = ctx.attr( WS_HANDSHAKER_ATTR );
+                if ( attr != null ) {
+                    WebSocketServerHandshaker wsHandshaker = attr.get();
+                    try {
+                        if ( wsHandshaker != null ) {
+                            wsHandshaker.close( ctx.channel(), (CloseWebSocketFrame) frame );
+                        }
+                    }
+                    finally {
+                        ctx.attr( WS_HANDSHAKER_ATTR ).remove();
+                    }
+                }
             }
             else if ( frame instanceof PingWebSocketFrame ) {
                 frame.content().retain();
@@ -93,9 +105,15 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
             }
             else if ( frame instanceof TextWebSocketFrame ) {
                 String text = ( (TextWebSocketFrame) frame ).text();
+                logger.debug( "ws({})={}", userConnection.id(), text );
                 Builder bcmdb = BaseCommand.newBuilder();
-                JsonFormat.merge( text, extensionRegistry, bcmdb );
+                JsonFormat.merge( text, eventBus.extentionRegistry(), bcmdb );
                 eventBus.onMessage( bcmdb.build(), userConnection );
+            }
+            else if ( frame instanceof BinaryWebSocketFrame ) {
+                byte[] data = frame.content().array();
+                BaseCommand bcmd = BaseCommand.parseFrom( data, eventBus.extentionRegistry() );
+                eventBus.onMessage( bcmd, userConnection );
             }
         }
     }

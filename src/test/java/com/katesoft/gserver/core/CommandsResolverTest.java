@@ -5,19 +5,37 @@ import static junit.framework.Assert.assertSame;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.Test;
 
+import com.google.protobuf.ExtensionRegistry;
+import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
+import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
+import com.katesoft.gserver.commands.Commands.MessageHeaders;
 
 public class CommandsResolverTest {
 
-    @SuppressWarnings({ })
+    @SuppressWarnings({})
     @Test
-    public void works() {
-        Commands.newMessageRegistry();
-        CommandsQualifierCodec.DefaultCommandsCodec r = new CommandsQualifierCodec.DefaultCommandsCodec();
+    public void works() throws Exception {
+        ExtensionRegistry messageRegistry = Commands.newMessageRegistry();
+
+        CommandsQualifierCodec r = new CommandsQualifierCodec.DefaultCommandsCodec( messageRegistry );
         LoginCommand logCmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();
-        r.codec().apply( ImmutablePair.of( BaseCommand.newBuilder(), (Object) logCmd ) );
-        assertSame( LoginCommand.class, r.decodec().apply( LoginCommand.class.getSimpleName() ) );
-        r.close();
+        Builder bcmdb = BaseCommand.newBuilder();
+        bcmdb
+                .setDebug( false )
+                .setProtocolVersion( "0.1" )
+                .setHeaders(
+                        MessageHeaders
+                                .newBuilder()
+                                .setCorrelationID( "corr-1" )
+                                .setMessageTimestamp( System.currentTimeMillis() )
+                                .setSequenceNumber( 1 )
+                                .build() )
+                .setExtension( LoginCommand.cmd, logCmd );
+        r.encoder().apply( ImmutablePair.of( bcmdb, (GeneratedMessage) logCmd ) );
+
+        BaseCommand bcmd = bcmdb.build();
+        assertSame( LoginCommand.class, r.decoder().apply( bcmd ) );
     }
 }

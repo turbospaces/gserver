@@ -1,5 +1,7 @@
 package com.katesoft.gserver.transport;
 
+import static com.google.common.net.HostAndPort.fromString;
+import static org.apache.commons.lang3.tuple.ImmutablePair.of;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -172,7 +174,7 @@ public class ProxyServer implements Closeable, Runnable {
             logger.error( e.getMessage(), e );
             Throwables.propagate( e );
         }
-        logger.info( "started proxy server on={}", localBinding );
+        logger.info( "started proxy server on={} for master-slave cfg={}", localBinding, masterSlave );
     }
     public HostAndPort getProxyAddress() {
         return localBinding;
@@ -180,5 +182,19 @@ public class ProxyServer implements Closeable, Runnable {
     @Override
     public void close() {
         eventLoop.shutdownGracefully();
+    }
+    public static void main(String... args) throws InterruptedException {
+        String local = args[0];
+        String master = args[1];
+        Optional<HostAndPort> slave = Optional.absent();
+        if ( args.length == 3 ) {
+            slave = Optional.of( fromString( args[2] ) );
+        }
+        ProxyServer ps = new ProxyServer( fromString( local ), of( fromString( master ), slave ) );
+        ps.run();
+        synchronized ( ps ) {
+            ps.wait();
+        }
+        ps.close();
     }
 }

@@ -1,8 +1,6 @@
 package com.katesoft.gserver.transport;
 
-import static com.google.common.net.HostAndPort.fromParts;
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
-import static com.katesoft.gserver.misc.Misc.shortHostname;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -26,12 +24,10 @@ import java.net.SocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Optional;
 import com.google.protobuf.ExtensionRegistry;
 import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands;
-import com.katesoft.gserver.games.roullete.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
 
 public class NettyServer implements TransportServer<SocketChannel> {
@@ -43,15 +39,11 @@ public class NettyServer implements TransportServer<SocketChannel> {
     private TransportServerSettings settings;
 
     @Override
-    public void startServer(final TransportServer.TransportServerSettings s, TransportMessageListener l) {
+    public void startServer(final TransportServer.TransportServerSettings s, final TransportMessageListener l) {
         this.settings = s;
         this.listener = l;
 
-        final ExtensionRegistry registry = ExtensionRegistry.newInstance();
-        Commands.registerAllExtensions( registry );
-        RoulleteCommands.registerAllExtensions( registry );
-
-        root = new RootDispatchHandler( l, registry );
+        root = new RootDispatchHandler( l );
 
         final ServerBootstrap tcpBootstrap = new ServerBootstrap();
         tcpBootstrap
@@ -62,7 +54,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
                     @Override
                     public void initChannel(SocketChannel ch) {
                         ChannelPipeline p = ch.pipeline();
-                        registerProtobufCodecs( p, registry ).addLast( root );
+                        registerProtobufCodecs( p, l.extentionRegistry() ).addLast( root );
                     }
                 } );
         tcpBootstrap.bind( settings.tcp.getHostText(), settings.tcp.getPort() ).syncUninterruptibly();
@@ -133,17 +125,5 @@ public class NettyServer implements TransportServer<SocketChannel> {
         p.addLast( "frameEncoder", new LengthFieldPrepender( 4 ) );
         p.addLast( "protobufEncoder", new ProtobufEncoder() );
         return p;
-    }
-    public static void main(String... args) throws InterruptedException {
-        TransportServer.TransportServerSettings settings = new TransportServer.TransportServerSettings();
-        settings.tcp = fromParts( shortHostname(), 8189 );
-        settings.websockets = Optional.absent();
-
-        NettyServer s = new NettyServer();
-        s.startServer( settings, new TransportMessageListener.EchoMessageListener() );
-        synchronized ( s ) {
-            s.wait();
-        }
-        s.close();
     }
 }

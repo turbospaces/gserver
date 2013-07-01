@@ -17,20 +17,20 @@ import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.GamePlayContext;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
-import com.katesoft.gserver.core.Commands;
-import com.katesoft.gserver.core.CommandsQualifierCodec;
+import com.katesoft.gserver.core.CommandsQualifierCodec.DefaultCommandsCodec;
 import com.katesoft.gserver.games.RouletteGame.PositionPayout;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
+import com.katesoft.gserver.server.AbstractEmbeddedTest;
 
 public class RouletteGameTest {
     Logger logger = LoggerFactory.getLogger( getClass() );
     RouletteGame game;
     GamePlayContext.RTP ctx = new GamePlayContext.RTP( mock( ScheduledExecutorService.class ) );
+    DefaultCommandsCodec codec = new DefaultCommandsCodec( AbstractEmbeddedTest.EXTENSION_REGISTRY );
 
     @Before
     public void setup() {
-        CommandsQualifierCodec.DEFAULT.get();
         game = new RouletteGame();
         game.init( ctx );
     }
@@ -52,10 +52,11 @@ public class RouletteGameTest {
             public void run() {
                 try {
                     game.commandsInterpreter().interpretCommand(
-                            Commands.mockCommandEvent(
-                                    RouletteSpinCommand.cmd,
-                                    RouletteSpinCommand.newBuilder().setPosition( position ).setBet( BetWrapper.mock() ).build(),
-                                    playerSession ) );
+                            AbstractEmbeddedTest.mockCommandEvent( RouletteSpinCommand.cmd, RouletteSpinCommand
+                                    .newBuilder()
+                                    .setPosition( position )
+                                    .setBet( BetWrapper.mock() )
+                                    .build(), playerSession, codec ) );
                 }
                 catch ( Exception e ) {
                     Throwables.propagate( e );
