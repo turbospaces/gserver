@@ -42,7 +42,7 @@ import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
 @Sharable
 class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {
-    private final Logger logger = LoggerFactory.getLogger( getClass() );
+    private static final Logger LOGGER = LoggerFactory.getLogger( RootDispatchHandler.class );
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
     private static AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
 
@@ -84,6 +84,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         else if ( msg instanceof WebSocketFrame ) {
             WebSocketFrame frame = (WebSocketFrame) msg;
             if ( frame instanceof CloseWebSocketFrame ) {
+                LOGGER.debug( "ws connection({}) closed", userConnection.id() );
                 frame.retain();
                 Attribute<WebSocketServerHandshaker> attr = ctx.attr( WS_HANDSHAKER_ATTR );
                 if ( attr != null ) {
@@ -105,7 +106,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
             }
             else if ( frame instanceof TextWebSocketFrame ) {
                 String text = ( (TextWebSocketFrame) frame ).text();
-                logger.debug( "ws({})={}", userConnection.id(), text );
+                LOGGER.debug( "ws({})={}", userConnection.id(), text );
                 Builder bcmdb = BaseCommand.newBuilder();
                 JsonFormat.merge( text, eventBus.extentionRegistry(), bcmdb );
                 eventBus.onMessage( bcmdb.build(), userConnection );
@@ -176,12 +177,21 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         public Future<Void> writeAsync(BaseCommand message) {
             Future<Void> f = null;
             switch ( connectionType ) {
-                case TCP:
+                case TCP: {
+                    if ( message.getDebug() ) {
+                        LOGGER.debug( "sending TCP response={}", message );
+                    }
                     f = ch.write( message );
                     break;
-                case WEBSOCKETS:
-                    ch.write( new TextWebSocketFrame( JsonFormat.printToString( message ) ) );
+                }
+                case WEBSOCKETS: {
+                    String json = JsonFormat.printToString( message );
+                    if ( message.getDebug() ) {
+                        LOGGER.debug( "sending ws response={}", json );
+                    }
+                    ch.write( new TextWebSocketFrame( json ) );
                     break;
+                }
                 case FLASH:
                     f = ch.write( message );
                     break;

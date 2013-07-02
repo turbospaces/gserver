@@ -33,6 +33,7 @@ public abstract class Commands {
                 .setProtocolVersion( cmd.getProtocolVersion() )
                 .setHeaders( cmd.getHeaders().toBuilder().setMessageTimestamp( currentTimeMillis() ).build() );
         builder.setExtension( extension, reply );
+        builder.setDebug( cmd.getDebug() );
         return codec.encoder().apply( (Pair<Builder, GeneratedMessage>) ImmutablePair.of( builder, reply ) ).build();
     }
     private Commands() {}
