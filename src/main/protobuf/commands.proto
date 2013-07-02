@@ -23,7 +23,6 @@ message UnknownCommadException {
 	extend BaseCommand {
 		required UnknownCommadException cmd = 100;
 	}
-
 	required BaseCommand req = 1;
 	optional string game = 2;
 }
@@ -67,6 +66,17 @@ message CloseGamePlayAndLogoutCommand {
 	}
 }
 
+message UpdatePlayerSettingsCommand {
+	extend BaseCommand {
+		required UpdatePlayerSettingsCommand cmd = 106;
+	}
+	optional string displayName = 1;
+	optional string prefLang = 2;
+	optional string prefCurrency = 3;
+	optional string disableMusic = 4;
+	optional string disableBackgroundSounds = 5;
+}
+
 enum Coin {
 	ONE = 1;
 	TWO = 2;
@@ -90,5 +100,11 @@ message BetResult {
 	required Bet bet = 1;
 	required bool win = 2;
 	required int32 amountUnsigned = 3;
+}
+
+message BetLimit {
+	extensions 10 to 100;
+	required int32 minBet = 1;
+	required int32 maxBet = 2;
 }
 
