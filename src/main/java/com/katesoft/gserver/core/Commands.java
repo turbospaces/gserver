@@ -7,7 +7,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
-import com.katesoft.gserver.api.CommandWrapperEvent;
+import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
@@ -22,7 +22,7 @@ public abstract class Commands {
         com.katesoft.gserver.commands.Commands.registerAllExtensions( registry );
         return registry;
     }
-    public static <T> BaseCommand toReply(CommandWrapperEvent e, GeneratedMessage.GeneratedExtension<BaseCommand, T> extension, T reply) {
+    public static <T> BaseCommand toReply(GameCommand e, GeneratedMessage.GeneratedExtension<BaseCommand, T> extension, T reply) {
         return toReply( e.getCmd(), e.getCodec(), extension, reply );
     }
     @SuppressWarnings({ "unchecked" })

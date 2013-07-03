@@ -8,6 +8,7 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
+import org.apache.commons.chain.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,13 +16,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Sets;
-import com.katesoft.gserver.api.CommandWrapperEvent;
 import com.katesoft.gserver.api.Game;
-import com.katesoft.gserver.api.GamePlayContext;
+import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
-import com.katesoft.gserver.commands.Commands.BaseCommand;
-import com.katesoft.gserver.commands.Commands.UnknownCommadException;
 
 public abstract class AbstractPlayer implements Player {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
@@ -72,29 +70,30 @@ public abstract class AbstractPlayer implements Player {
         }
     }
     @Override
-    public boolean dispatchCommand(BaseCommand cmd, CommandsQualifierCodec codec, GamePlayContext ctx) {
-        final String sessionId = checkNotNull( cmd.getSessionId(), "got command=%s detached from session", cmd );
-        PlayerSession session = find( sessions, new Predicate<PlayerSession>() {
+    public boolean execute(Context context) {
+        final NetworkCommandContext ctx = (NetworkCommandContext) context;
+        final String sessionId = checkNotNull( ctx.getCmd().getSessionId(), "got command=%s detached from session", ctx.getCmd() );
+        final PlayerSession session = find( sessions, new Predicate<PlayerSession>() {
             @Override
             public boolean apply(PlayerSession input) {
                 return input.id().equals( sessionId );
             }
         } );
-        Game g = session.getAssociatedGame();
+        final Game g = session.getAssociatedGame();
+
         for ( ;; ) {
             try {
-                CommandWrapperEvent e = new CommandWrapperEvent( cmd, codec, session );
-                g.commandsInterpreter().interpretCommand( e );
-                boolean acknowledged = e.isAcknowledged();
-                if ( !acknowledged ) {
-                    UnknownCommadException reply = UnknownCommadException.newBuilder().setGame( g.getClass().getSimpleName() ).setReq( cmd ).build();
-                    session.getAssociatedUserConnection().writeAsync( Commands.toReply( cmd, codec, UnknownCommadException.cmd, reply ) );
-                }
-                return acknowledged;
+                GameCommand e = new GameCommand( ctx, session );
+
+                g.commandInterpreter().interpretCommand( e );
+                return e.isAcknowledged();
             }
             catch ( Throwable t ) {
                 logger.error(
-                        format( "Unable to interpet game specific command %s:%s", g.getClass().getSimpleName(), cmd.getClass().getSimpleName() ),
+                        format( "Unable to interpet game specific command %s:%s", g.getClass().getSimpleName(), ctx
+                                .getCmd()
+                                .getClass()
+                                .getSimpleName() ),
                         t );
                 Throwables.propagate( t );
             }

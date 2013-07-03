@@ -3,7 +3,7 @@ package com.katesoft.gserver.games;
 import static com.google.common.base.Objects.toStringHelper;
 import static com.google.common.primitives.Ints.asList;
 import static com.katesoft.gserver.core.Commands.toReply;
-import static com.katesoft.gserver.games.RouletteGame.PositionPayout.of;
+import static com.katesoft.gserver.games.RouletteGame.PositionAndPayout.of;
 import static com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition.*;
 
 import java.util.List;
@@ -15,7 +15,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.katesoft.gserver.api.BetWrapper;
-import com.katesoft.gserver.api.CommandWrapperEvent;
+import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.GameCommandInterpreter;
 import com.katesoft.gserver.core.AbstractGame;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
@@ -23,41 +23,44 @@ import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinReply;
 
 public class RouletteGame extends AbstractGame {
-    static final Map<RouletteBetPosition, PositionPayout> ALL = Maps.newHashMap();
-    static final Map<Integer, Set<PositionPayout>> NUMS = Maps.newHashMap();
+    static final Map<RouletteBetPosition, PositionAndPayout> ALL = Maps.newHashMap();
+    static final Map<Integer, Set<PositionAndPayout>> NUMS = Maps.newHashMap();
 
     public RouletteGame() {
         interpreter = new GameCommandInterpreter() {
             @Override
-            public void interpretCommand(CommandWrapperEvent e) throws Exception {
-                if ( RouletteSpinCommand.class == e.cmdClass() ) {
-                    RouletteSpinCommand spin = e.getCmd().getExtension( RouletteSpinCommand.cmd );
+            public void interpretCommand(final GameCommand e) throws Exception {
+                e.interpretIfPossible( RouletteSpinCommand.class, new Runnable() {
+                    @Override
+                    public void run() {
+                        RouletteSpinCommand spin = e.getCmd().getExtension( RouletteSpinCommand.cmd );
 
-                    PositionPayout position = ALL.get( spin.getPosition() );
-                    int number = gamePlayContext.rng().nextInt( 37 ) - 1;
-                    Set<PositionPayout> positions = NUMS.get( number );
-                    boolean win = positions.contains( position );
+                        PositionAndPayout position = ALL.get( spin.getPosition() );
+                        int number = gamePlayContext.rng().nextInt( 37 ) - 1;
+                        Set<PositionAndPayout> positions = NUMS.get( number );
+                        boolean win = positions.contains( position );
 
-                    BetWrapper bet = new BetWrapper( spin.getBet(), win );
-                    gamePlayContext.creditWin( bet );
-                    RouletteSpinReply spinReply = RouletteSpinReply
-                            .newBuilder()
-                            .setBetResult( bet.toBetResult() )
-                            .setPosition( position.getPosition() )
-                            .build();
-                    e.replyAsyncAndAcknowledge( toReply( e, RouletteSpinReply.cmd, spinReply ) );
-                }
+                        BetWrapper bet = new BetWrapper( spin.getBet(), win );
+                        gamePlayContext.creditWin( bet );
+                        RouletteSpinReply spinReply = RouletteSpinReply
+                                .newBuilder()
+                                .setBetResult( bet.toBetResult() )
+                                .setPosition( position.getPosition() )
+                                .build();
+                        e.replyAsync( toReply( e, RouletteSpinReply.cmd, spinReply ) );
+                    }
+                } );
             }
         };
     }
 
-    public static final class PositionPayout {
+    public static final class PositionAndPayout {
         private int payout;
         private ImmutableCollection<Integer> numbers;
         private RouletteBetPosition position;
 
-        public static PositionPayout of(int payout, List<Integer> numbers, RouletteBetPosition position) {
-            PositionPayout p = new PositionPayout();
+        public static PositionAndPayout of(int payout, List<Integer> numbers, RouletteBetPosition position) {
+            PositionAndPayout p = new PositionAndPayout();
 
             p.payout = payout;
             p.numbers = ImmutableList.copyOf( numbers );
@@ -242,10 +245,10 @@ public class RouletteGame extends AbstractGame {
         }
     }
 
-    private static Set<PositionPayout> possiblePositionsFor(int number) {
-        Set<PositionPayout> result = Sets.newHashSet();
+    private static Set<PositionAndPayout> possiblePositionsFor(int number) {
+        Set<PositionAndPayout> result = Sets.newHashSet();
         for ( RouletteBetPosition next : RouletteBetPosition.values() ) {
-            PositionPayout positionPayout = ALL.get( next );
+            PositionAndPayout positionPayout = ALL.get( next );
             if ( positionPayout.numbers.contains( number ) ) {
                 result.add( positionPayout );
             }

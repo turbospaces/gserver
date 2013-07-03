@@ -17,8 +17,8 @@ import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.GamePlayContext;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
-import com.katesoft.gserver.core.CommandsQualifierCodec.DefaultCommandsCodec;
-import com.katesoft.gserver.games.RouletteGame.PositionPayout;
+import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
+import com.katesoft.gserver.games.RouletteGame.PositionAndPayout;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.server.AbstractEmbeddedTest;
@@ -27,7 +27,7 @@ public class RouletteGameTest {
     Logger logger = LoggerFactory.getLogger( getClass() );
     RouletteGame game;
     GamePlayContext.RTP ctx = new GamePlayContext.RTP( mock( ScheduledExecutorService.class ) );
-    DefaultCommandsCodec codec = new DefaultCommandsCodec( AbstractEmbeddedTest.EXTENSION_REGISTRY );
+    ProtoCommandsCodec codec = new ProtoCommandsCodec( AbstractEmbeddedTest.EXTENSION_REGISTRY );
 
     @Before
     public void setup() {
@@ -41,7 +41,7 @@ public class RouletteGameTest {
     }
 
     private void testPosition(final RouletteBetPosition position) {
-        PositionPayout positionPayout = RouletteGame.ALL.get( position );
+        PositionAndPayout positionPayout = RouletteGame.ALL.get( position );
         int payout = positionPayout.getPayout();
         UserConnection.UserConnectionStub uc = new UserConnection.UserConnectionStub();
         final PlayerSession playerSession = Mockito.mock( PlayerSession.class );
@@ -51,7 +51,7 @@ public class RouletteGameTest {
             @Override
             public void run() {
                 try {
-                    game.commandsInterpreter().interpretCommand(
+                    game.commandInterpreter().interpretCommand(
                             AbstractEmbeddedTest.mockCommandEvent( RouletteSpinCommand.cmd, RouletteSpinCommand
                                     .newBuilder()
                                     .setPosition( position )

@@ -20,6 +20,7 @@
         <jsr305.version>2.0.1</jsr305.version>
         <guava.version>14.0.1</guava.version>
         <apache.commons.lang3.version>3.1</apache.commons.lang3.version>
+        <apache.commons.chain.version>1.2</apache.commons.chain.version>
 
         <!-- logging -->
         <slf4j.version>1.7.2</slf4j.version>
@@ -137,6 +138,11 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${apache.commons.lang3.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-chain</groupId>
+            <artifactId>commons-chain</artifactId>
+            <version>${apache.commons.chain.version}</version>
         </dependency>
 
         <dependency>

@@ -77,6 +77,14 @@ message UpdatePlayerSettingsCommand {
 	optional string disableBackgroundSounds = 5;
 }
 
+message GetGameSettingsCommand {
+	extend BaseCommand {
+		required GetGameSettingsCommand cmd = 107;
+	}
+	required BetLimits betLimits = 1;
+	repeated Coin coins = 2;
+}
+
 enum Coin {
 	ONE = 1;
 	TWO = 2;
@@ -85,6 +93,8 @@ enum Coin {
 	TWENTY_FIVE = 5;
 	FIFTY = 6;
 	HUNDRED = 7;
+	FIVE_HUNDRED = 8;
+	THOUSAND = 9;
 }
 
 message CoinQuantitySlice {
@@ -102,9 +112,8 @@ message BetResult {
 	required int32 amountUnsigned = 3;
 }
 
-message BetLimit {
+message BetLimits {
 	extensions 10 to 100;
 	required int32 minBet = 1;
 	required int32 maxBet = 2;
 }
-

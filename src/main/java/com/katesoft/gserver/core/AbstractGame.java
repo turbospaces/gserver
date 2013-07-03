@@ -50,7 +50,7 @@ public abstract class AbstractGame implements Game {
         return getClass().getSimpleName();
     }
     @Override
-    public GameCommandInterpreter commandsInterpreter() {
+    public GameCommandInterpreter commandInterpreter() {
         return interpreter;
     }
     @Override

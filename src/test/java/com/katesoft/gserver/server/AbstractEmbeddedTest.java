@@ -20,8 +20,9 @@ import com.google.common.base.Optional;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
-import com.katesoft.gserver.api.CommandWrapperEvent;
+import com.google.protobuf.GeneratedMessage.GeneratedExtension;
 import com.katesoft.gserver.api.Game;
+import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.GamePlayContext;
 import com.katesoft.gserver.api.GamePlayContext.AbstractGamePlayContext;
 import com.katesoft.gserver.api.PlayerSession;
@@ -35,12 +36,13 @@ import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
-import com.katesoft.gserver.core.CommandsQualifierCodec.DefaultCommandsCodec;
-import com.katesoft.gserver.core.MessageListenerDispatcher;
+import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
+import com.katesoft.gserver.core.MessageDispatcher;
+import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.games.RouletteGame;
 import com.katesoft.gserver.games.roullete.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
-import com.katesoft.gserver.spi.PlatformInterface;
+import com.katesoft.gserver.spi.AbstractPlatformInterface;
 import com.katesoft.gserver.transport.ConnectionType;
 import com.katesoft.gserver.transport.NettyServer;
 import com.katesoft.gserver.transport.NettyTcpClient;
@@ -64,7 +66,7 @@ public abstract class AbstractEmbeddedTest {
     @Before
     public void setup() throws Exception {
         if ( s == null ) {
-            MessageListenerDispatcher mld = mockMessageListener();
+            MessageDispatcher mld = mockMessageListener();
             TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
 
             s = new NettyServer();
@@ -96,8 +98,7 @@ public abstract class AbstractEmbeddedTest {
         }
     }
     @SuppressWarnings({ "unchecked" })
-    public static <T> CommandWrapperEvent mockCommandEvent(GeneratedMessage.GeneratedExtension<BaseCommand, T> extension, T t,
-                                                           PlayerSession playerSession, DefaultCommandsCodec codec) {
+    public static <T> GameCommand mockCommandEvent(GeneratedExtension<BaseCommand, T> ext, T t, PlayerSession ps, ProtoCommandsCodec codec) {
         long tmstmp = System.currentTimeMillis();
         MessageHeaders headers = MessageHeaders
                 .newBuilder()
@@ -106,10 +107,11 @@ public abstract class AbstractEmbeddedTest {
                 .setSequenceNumber( (short) tmstmp )
                 .build();
 
-        Builder b = BaseCommand.newBuilder().setProtocolVersion( "1.0" ).setExtension( extension, t ).setHeaders( headers );
+        Builder b = BaseCommand.newBuilder().setProtocolVersion( "1.0" ).setExtension( ext, t ).setHeaders( headers );
         b = codec.encoder().apply( (Pair<Builder, GeneratedMessage>) ImmutablePair.of( b, t ) );
 
-        return new CommandWrapperEvent( b.build(), codec, playerSession );
+        NetworkCommandContext ctx = new NetworkCommandContext( b.build(), codec, ps.getAssociatedUserConnection() );
+        return new GameCommand( ctx, ps );
     }
     @SuppressWarnings("unused")
     protected ProxyServer setupProxy(NettyServer ns, HostAndPort actualPort) throws Exception {
@@ -129,11 +131,12 @@ public abstract class AbstractEmbeddedTest {
     }
 
     @SuppressWarnings("unchecked")
-    public static MessageListenerDispatcher mockMessageListener() {
-        DefaultCommandsCodec codec = new CommandsQualifierCodec.DefaultCommandsCodec( EXTENSION_REGISTRY );
+    public static MessageDispatcher mockMessageListener() {
+        ProtoCommandsCodec codec = new CommandsQualifierCodec.ProtoCommandsCodec( EXTENSION_REGISTRY );
         AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
-        PlatformInterface platform = new PlatformInterface.MockPlatformInterface( ctx, codec, RouletteGame.class );
-        MessageListenerDispatcher mld = new MessageListenerDispatcher( platform, EXTENSION_REGISTRY );
+        AbstractPlatformInterface platform = new AbstractPlatformInterface( ctx, codec ) {};
+        platform.setSupportedGames( RouletteGame.class );
+        MessageDispatcher mld = new MessageDispatcher( platform, EXTENSION_REGISTRY );
         return mld;
     }
 
@@ -142,7 +145,7 @@ public abstract class AbstractEmbeddedTest {
         settings.tcp = fromParts( "localhost", 8189 );
         settings.websockets = Optional.of( fromParts( "localhost", 8190 ) );
 
-        MessageListenerDispatcher mld = mockMessageListener();
+        MessageDispatcher mld = mockMessageListener();
 
         NettyServer ms = new NettyServer();
         ms.startServer( settings, mld );

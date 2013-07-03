@@ -1,49 +1,56 @@
 package com.katesoft.gserver.api;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import java.util.concurrent.Future;
 
 import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.UnknownCommadException;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
+import com.katesoft.gserver.core.NetworkCommandContext;
 
-public final class CommandWrapperEvent {
-    private final BaseCommand cmd;
-    private final CommandsQualifierCodec codec;
+public final class GameCommand {
     private final PlayerSession playerSession;
+    private final NetworkCommandContext ctx;
     private boolean acknowledged;
 
-    public CommandWrapperEvent(BaseCommand cmd, CommandsQualifierCodec codec, PlayerSession playerSession) {
+    public GameCommand(NetworkCommandContext ctx, PlayerSession playerSession) {
+        this.ctx = ctx;
         this.playerSession = playerSession;
-        this.cmd = checkNotNull( cmd );
-        this.codec = checkNotNull( codec );
+    }
+    public void interpretIfPossible(Class<? extends GeneratedMessage> clazz, Runnable r) throws Exception {
+        if ( cmdClass() == clazz ) {
+            try {
+                r.run();
+            }
+            finally {
+                acknowledge();
+            }
+        }
     }
     /**
      * @return class of command(translate from the qualifier via codec).
      * @throws Exception if the target class can't be decoded from message by qualifier.
      */
     public Class<? extends GeneratedMessage> cmdClass() throws Exception {
-        return codec.decoder().apply( cmd );
+        return ctx.getCmdCodec().decoder().apply( getCmd() );
     }
     /**
      * @return command itself wrapped into base command, you would need to get
      *         actual request from the extension.
      */
     public BaseCommand getCmd() {
-        return cmd;
+        return ctx.getCmd();
     }
     /**
      * @return codec used for qualifier to class translation.
      */
     public CommandsQualifierCodec getCodec() {
-        return codec;
+        return ctx.getCmdCodec();
     }
     /**
      * manually acknowledge the reception of the message. In most cases you
      * would not need to call this method at all since it will be called as part
-     * of {@link #replyAsyncAndAcknowledge(BaseCommand)} and {@link #replySyncAndAcknowledge(BaseCommand)}, but it would
+     * of {@link #replyAsync(BaseCommand)} and {@link #replySync(BaseCommand)}, but it would
      * be
      * required to manually acknowledge the reception of message in case when no
      * reply expected/required (this is needed for system in order to properly
@@ -55,7 +62,7 @@ public final class CommandWrapperEvent {
     public boolean isAcknowledged() {
         return acknowledged;
     }
-    public Future<Void> replyAsyncAndAcknowledge(BaseCommand reply) {
+    public Future<Void> replyAsync(BaseCommand reply) {
         try {
             return playerSession.getAssociatedUserConnection().writeAsync( reply );
         }
@@ -63,7 +70,7 @@ public final class CommandWrapperEvent {
             acknowledge();
         }
     }
-    public void replySyncAndAcknowledge(BaseCommand reply) {
+    public void replySync(BaseCommand reply) {
         try {
             playerSession.getAssociatedUserConnection().writeSync( reply );
         }

@@ -35,7 +35,7 @@ public interface CommandsQualifierCodec {
      */
     ExtensionRegistry extensionRegistry();
 
-    public static final class DefaultCommandsCodec implements CommandsQualifierCodec {
+    public static final class ProtoCommandsCodec implements CommandsQualifierCodec {
         private final ExtensionRegistry extensionRegistry;
         private final Function<BaseCommand, Class<? extends GeneratedMessage>> from = new Function<BaseCommand, Class<? extends GeneratedMessage>>() {
             @SuppressWarnings("unchecked")
@@ -57,7 +57,7 @@ public interface CommandsQualifierCodec {
             }
         };
 
-        public DefaultCommandsCodec(ExtensionRegistry extensionRegistry) {
+        public ProtoCommandsCodec(ExtensionRegistry extensionRegistry) {
             this.extensionRegistry = extensionRegistry;
         }
         @Override
