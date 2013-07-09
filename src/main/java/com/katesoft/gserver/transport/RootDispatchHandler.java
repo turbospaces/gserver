@@ -28,9 +28,9 @@ import java.io.Closeable;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.jasypt.util.text.BasicTextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.encrypt.TextEncryptor;
 
 import com.google.common.base.Supplier;
 import com.google.common.util.concurrent.Atomics;
@@ -39,6 +39,7 @@ import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
+import com.katesoft.gserver.core.Encryptors;
 
 @Sharable
 class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {
@@ -137,10 +138,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
     }
 
     static final class SocketUserConnection implements UserConnection {
-        private static final BasicTextEncryptor ENCRYPTOR = new BasicTextEncryptor();
-        static {
-            ENCRYPTOR.setPassword( SocketUserConnection.class.getSimpleName() );
-        }
+        private static final TextEncryptor ENCRYPTOR = Encryptors.textEnc( SocketUserConnection.class.getSimpleName() );
         private final String id;
         private final SocketChannel ch;
         private final ChannelGroup connections;

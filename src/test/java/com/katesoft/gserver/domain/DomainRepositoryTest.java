@@ -1,6 +1,5 @@
 package com.katesoft.gserver.domain;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -56,8 +55,7 @@ public class DomainRepositoryTest {
         UserAccount copy = repo.findUserAccount( acc.getPrimaryKey() ).get();
         assertTrue( EqualsBuilder.reflectionEquals( acc, copy, false ) );
 
-        assertFalse( repo.saveUserAccount( acc ) );
-
+        repo.saveUserAccount( acc );
         repo.deleteUserAccount( acc );
     }
 }
