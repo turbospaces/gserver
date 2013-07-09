@@ -4,9 +4,11 @@ import static org.junit.Assert.assertTrue;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisCallback;
@@ -55,7 +57,11 @@ public class DomainRepositoryTest {
         UserAccount copy = repo.findUserAccount( acc.getPrimaryKey() ).get();
         assertTrue( EqualsBuilder.reflectionEquals( acc, copy, false ) );
 
-        repo.saveUserAccount( acc );
+        try {
+            repo.saveUserAccount( acc );
+            Assert.fail();
+        }
+        catch ( DuplicateKeyException e ) {}
         repo.deleteUserAccount( acc );
     }
 }
