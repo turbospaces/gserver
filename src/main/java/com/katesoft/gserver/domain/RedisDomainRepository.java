@@ -69,7 +69,7 @@ public class RedisDomainRepository {
             public Void apply(BoundHashOperations<String, String, String> ops) {
                 ops.put( "session_id", playerSession.sessionId );
                 ops.put( "user_connection_id", playerSession.userConnectionId );
-                ops.put( "player_id", playerSession.playerId );
+                ops.put( "user_id", playerSession.userId );
                 ops.put( "game_id", playerSession.game.getPrimaryKey() );
                 ops.put( "bet_limits", JsonFormat.printToString( playerSession.betLimits ) );
                 ops.put( "coins", JsonFormat.printToString( playerSession.coins ) );
@@ -85,7 +85,7 @@ public class RedisDomainRepository {
                     try {
                         String sessionId = ops.get( "session_id" );
                         String connectionId = ops.get( "user_connection_id" );
-                        String playerId = ops.get( "player_id" );
+                        String userId = ops.get( "user_id" );
                         GameBO game = findGame( ops.get( "game_id" ) ).get();
 
                         BetLimits.Builder betLimits = BetLimits.newBuilder();
@@ -94,7 +94,7 @@ public class RedisDomainRepository {
                         JsonFormat.merge( ops.get( "bet_limits" ), betLimits );
                         JsonFormat.merge( ops.get( "coins" ), coins );
 
-                        return new PlayerSessionBO( sessionId, playerId, connectionId, betLimits.build(), coins.build(), game );
+                        return new PlayerSessionBO( sessionId, userId, connectionId, betLimits.build(), coins.build(), game );
                     }
                     catch ( ParseException e ) {
                         Throwables.propagate( e );

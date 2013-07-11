@@ -96,19 +96,15 @@ message UpdatePlayerSettingsCommand {
 	extend BaseCommand {
 		required UpdatePlayerSettingsCommand cmd = 105;
 	}
-	optional string displayName = 1;
-	optional string prefLang = 2;
-	optional string payoutCurrency = 3;
-	optional string disableMusic = 4;
-	optional string disableBackgroundSounds = 5;
+	required PlayerSettings settings = 1;
 }
 //
 // open game play for specific game.
-// most likely after starting game client will issue additional command to retrieve game settings.
+// the command itself is idempotent, you will be attached to existing player session instance if it's ongoing.
 //
 message OpenGamePlayCommand {
 	extend BaseCommand {
-		required OpenGamePlayCommand cmd = 113;
+		required OpenGamePlayCommand cmd = 110;
 	}
 	required string gameId = 1;
 }
@@ -118,10 +114,9 @@ message OpenGamePlayCommand {
 //
 message OpenGamePlayReply {
 	extend BaseCommand {
-		required OpenGamePlayReply cmd = 114;
+		required OpenGamePlayReply cmd = 111;
 	}
 	required string sessionId = 1;
-	required string displayName = 2;
-	required BetLimits betLimits = 3;
-	required Coins coins = 4;
+	required BetLimits betLimits = 2;
+	required Coins coins = 3;
 }

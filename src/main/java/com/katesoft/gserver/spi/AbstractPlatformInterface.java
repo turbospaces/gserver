@@ -1,5 +1,6 @@
 package com.katesoft.gserver.spi;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.katesoft.gserver.core.Commands.toReply;
 import static com.katesoft.gserver.domain.RedisDomainRepository.required;
@@ -13,8 +14,6 @@ import org.apache.commons.chain.impl.ChainBase;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
 
 import com.google.common.base.Optional;
@@ -37,9 +36,7 @@ import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.commands.Commands.ReloginCommand;
 import com.katesoft.gserver.commands.Commands.UpdatePlayerSettingsCommand;
 import com.katesoft.gserver.core.AbstractPlayer;
-import com.katesoft.gserver.core.AbstractPlayerSession;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
-import com.katesoft.gserver.core.Encryptors;
 import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.domain.Entities.BetLimits;
 import com.katesoft.gserver.domain.Entities.Coin;
@@ -55,7 +52,6 @@ import com.katesoft.gserver.domain.support.RedisUserDetailsService;
 public abstract class AbstractPlatformInterface implements PlatformInterface {
     protected final Logger logger = LoggerFactory.getLogger( getClass() );
 
-    private final TextEncryptor textEncryptor = Encryptors.textEnc( getClass().getName() );
     private final GamePlayContext ctx;
     private final CommandsQualifierCodec codec;
     private final Chain chain;
@@ -97,6 +93,7 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
                 BaseCommand cmd = ncc.getCmd();
                 UserConnection uc = ncc.getUserConnection();
                 Class<? extends GeneratedMessage> type = codec.decoder().apply( cmd );
+                boolean processed = CONTINUE_PROCESSING;
 
                 /**
                  * by default handles those actions:
@@ -105,39 +102,31 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
                  */
                 if ( LoginCommand.class == type ) {
                     LoginCommand login = cmd.getExtension( LoginCommand.cmd );
-                    try {
-                        Player player = login( login.getToken() );
-                        uc.asociatePlayer( player );
-                    }
-                    catch ( AuthenticationException e ) {
-                        Builder excb = LoginCommnadException.newBuilder().setMsg( e.getMessage() );
-                        if ( cmd.getDebug() ) {
-                            excb.setStacktrace( ExceptionUtils.getStackTrace( e ) );
-                        }
-                        uc.writeSync( toReply( cmd, codec, LoginCommnadException.cmd, excb.build() ) );
-                        throw new DeadConnectionException( uc, e.getMessage() );
-                    }
-                    return PROCESSING_COMPLETE;
+                    Player player = login( login.getToken() );
+                    tryLogin( cmd, player, uc );
+                    processed = PROCESSING_COMPLETE;
                 }
                 else if ( ReloginCommand.class == type ) {
-                    cmd.getExtension( ReloginCommand.cmd );
+                    checkNotNull( cmd.getExtension( ReloginCommand.cmd ) );
+                    String sessionId = checkNotNull( cmd.getSessionId() );
+                    Player player = relogin( sessionId );
+                    tryLogin( cmd, player, uc );
+                    processed = PROCESSING_COMPLETE;
                 }
                 else if ( OpenGamePlayCommand.class == type ) {
                     OpenGamePlayCommand openGamePlay = cmd.getExtension( OpenGamePlayCommand.cmd );
                     Player player = uc.associatedPlayer();
-                    PlayerSession playerSession = openPlayerSession( openGamePlay.getGameId(), player, uc );
-                    player.addPlayerSession( playerSession );
+                    PlayerSessionBO playerSession = openPlayerSession( openGamePlay.getGameId(), player, uc );
 
                     OpenGamePlayReply reply = OpenGamePlayReply
                             .newBuilder()
-                            .setSessionId( playerSession.id() )
-                            .setDisplayName( playerSession.getAssociatedGameDefinition().getDisplayName() )
-                            .setBetLimits( playerSession.getBetLimits() )
-                            .setCoins( playerSession.getCoins() )
+                            .setSessionId( playerSession.sessionId )
+                            .setBetLimits( playerSession.betLimits )
+                            .setCoins( playerSession.coins )
                             .build();
 
                     uc.writeAsync( toReply( cmd, commandsCodec(), OpenGamePlayReply.cmd, reply ) );
-                    return PROCESSING_COMPLETE;
+                    processed = PROCESSING_COMPLETE;
                 }
                 else if ( CloseGamePlayAndLogoutCommand.class == type ) {
                     Player player = uc.associatedPlayer();
@@ -145,16 +134,28 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
                         logout( player, cmd.getSessionId() );
                         uc.close();
                     }
-                    return PROCESSING_COMPLETE;
+                    processed = PROCESSING_COMPLETE;
                 }
                 else if ( UpdatePlayerSettingsCommand.class == type ) {
-                    UpdatePlayerSettingsCommand updatePlayerSettings = cmd.getExtension( UpdatePlayerSettingsCommand.cmd );
-                    Player player = uc.associatedPlayer();
+                    cmd.getExtension( UpdatePlayerSettingsCommand.cmd );
+                    uc.associatedPlayer();
                 }
-
-                return CONTINUE_PROCESSING;
+                return processed;
             }
         } );
+    }
+    private void tryLogin(BaseCommand cmd, Player player, UserConnection uc) {
+        try {
+            uc.asociatePlayer( player );
+        }
+        catch ( Exception e ) {
+            Builder excb = LoginCommnadException.newBuilder().setMsg( e.getMessage() );
+            if ( cmd.getDebug() ) {
+                excb.setStacktrace( ExceptionUtils.getStackTrace( e ) );
+            }
+            uc.writeSync( toReply( cmd, codec, LoginCommnadException.cmd, excb.build() ) );
+            throw new DeadConnectionException( uc, e.getMessage() );
+        }
     }
     /**
      * by default treat token as persistent remember me token value which is generated by spring-security and stored via
@@ -172,36 +173,45 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
         checkState( rememberMeToken.getTokenValue().equals( tokenValue ) );
         String username = rememberMeToken.getUsername();
         UserAccountBO userAccount = (UserAccountBO) userDetailsService.loadUserByUsername( username );
-
-        AbstractPlayer player = players.get( username );
+        return initPlayer( userAccount );
+    }
+    protected Player relogin(String sessionId) {
+        Optional<PlayerSessionBO> ongoing = repository.findPlayerSession( sessionId );
+        PlayerSessionBO playerSession = required( ongoing, PlayerSessionBO.class, sessionId );
+        UserAccountBO userAccount = (UserAccountBO) userDetailsService.loadUserByUsername( playerSession.userId );
+        return initPlayer( userAccount );
+    }
+    protected Player initPlayer(UserAccountBO userAccount) {
+        AbstractPlayer player = players.get( userAccount.getPrimaryKey() );
         if ( player == null ) {
             player = new AbstractPlayer( userAccount ) {};
-            AbstractPlayer prev = players.putIfAbsent( username, player );
+            AbstractPlayer prev = players.putIfAbsent( userAccount.getPrimaryKey(), player );
             if ( prev != null ) {
                 player = prev;
             }
         }
         return player;
     }
-    protected PlayerSession openPlayerSession(String gameCode, Player pl, UserConnection uc) {
+    protected PlayerSessionBO openPlayerSession(String gameCode, Player player, UserConnection uc) {
         GameBO gameBO = required( repository.findGame( gameCode ), GameBO.class, gameCode );
-        String sessionId = PlayerSessionBO.toSessionId( pl, gameBO, textEncryptor );
+        String sessionId = PlayerSessionBO.toSessionId( player, gameBO );
         Optional<PlayerSessionBO> ongoing = repository.findPlayerSession( sessionId );
         Game game = gameBO.newInstance( ctx );
 
-        BetLimits blimits;
-        Coins coins;
-
         if ( ongoing.isPresent() ) {
-            blimits = ongoing.get().betLimits;
-            coins = ongoing.get().coins;
+            logger.info( "Attaching game play to existing Player Session = {}", ongoing.get().sessionId );
+            return ongoing.get();
         }
         else {
-            blimits = BetLimits.newBuilder().setMaxBet( Short.MAX_VALUE ).setMinBet( 1 ).build();
-            coins = Coins.newBuilder().addAllCoins( ImmutableSet.copyOf( Coin.values() ) ).build();
-        }
+            BetLimits blimits = BetLimits.newBuilder().setMaxBet( Short.MAX_VALUE ).setMinBet( 1 ).build();
+            Coins coins = Coins.newBuilder().addAllCoins( ImmutableSet.copyOf( Coin.values() ) ).build();
 
-        return new AbstractPlayerSession( sessionId, uc, game, gameBO, pl, blimits, coins ) {};
+            PlayerSession playerSession = player.openPlayerSession( sessionId, uc, game, gameBO, blimits, coins );
+            logger.info( "PlayerSesion has been created = {}", playerSession );
+            PlayerSessionBO playerSessionBO = new PlayerSessionBO( playerSession );
+            repository.savePlayerSession( playerSessionBO );
+            return playerSessionBO;
+        }
     }
     protected void logout(Player player, String sessionId) {
         player.closePlayerSession( sessionId );

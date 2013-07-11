@@ -22,19 +22,19 @@ public interface PlayerSession extends Closeable {
      * 
      * @return associated game.
      */
-    UserConnection getAssociatedUserConnection();
+    UserConnection getUserConnection();
 
     /**
      * get the game instance created for corresponding {@link GameBO}.</p>
      * 
      * @return game instance.
      */
-    Game getAssociatedGame();
+    Game getGame();
 
     /**
      * @return the associated game definition from which the game has been created.
      */
-    GameBO getAssociatedGameDefinition();
+    GameBO getGameMeta();
 
     /**
      * given 1-to-many mapping between player and player sessions (even that player can have multiple player session

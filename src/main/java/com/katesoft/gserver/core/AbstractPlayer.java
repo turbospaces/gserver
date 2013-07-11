@@ -19,31 +19,43 @@ import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
+import com.katesoft.gserver.api.UserConnection;
+import com.katesoft.gserver.domain.Entities.BetLimits;
+import com.katesoft.gserver.domain.Entities.Coins;
+import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.domain.UserAccountBO;
 
 public abstract class AbstractPlayer implements Player {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
-    private final Map<String, PlayerSession> sessions = Maps.newHashMap();
-    protected String id, displayName;
+
+    protected final Map<String, PlayerSession> sessions = Maps.newHashMap();
+    protected final String userId, displayName;
 
     public AbstractPlayer(UserAccountBO userAccount) {
-        this.id = userAccount.getPrimaryKey();
+        this.userId = userAccount.getPrimaryKey();
         this.displayName = userAccount.toFullName();
     }
     @Override
-    public String getPrimaryKey() {
-        return id;
+    public final String userId() {
+        return userId;
     }
     @Override
     public String displayName() {
         return displayName;
     }
     @Override
-    public synchronized boolean addPlayerSession(PlayerSession playerSession) {
-        return sessions.put( playerSession.id(), playerSession ) == null;
+    public PlayerSession openPlayerSession(String sessionId,
+                                           UserConnection uc,
+                                           Game game,
+                                           GameBO gameBO,
+                                           BetLimits blimits,
+                                           Coins coins) {
+        PlayerSession session = new AbstractPlayerSession( sessionId, uc, game, gameBO, this, blimits, coins ) {};
+        sessions.put( session.id(), session );
+        return session;
     }
     @Override
-    public synchronized void closePlayerSession(final String sessionId) {
+    public void closePlayerSession(final String sessionId) {
         PlayerSession session = find( sessions.values(), new Predicate<PlayerSession>() {
             @Override
             public boolean apply(@Nullable PlayerSession input) {
@@ -74,7 +86,7 @@ public abstract class AbstractPlayer implements Player {
                 return input.id().equals( sessionId );
             }
         } );
-        final Game g = session.getAssociatedGame();
+        final Game g = session.getGame();
 
         for ( ;; ) {
             try {

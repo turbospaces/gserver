@@ -64,7 +64,7 @@ public final class GameCommand {
     }
     public Future<Void> replyAsync(BaseCommand reply) {
         try {
-            return playerSession.getAssociatedUserConnection().writeAsync( reply );
+            return playerSession.getUserConnection().writeAsync( reply );
         }
         finally {
             acknowledge();
@@ -72,7 +72,7 @@ public final class GameCommand {
     }
     public void replySync(BaseCommand reply) {
         try {
-            playerSession.getAssociatedUserConnection().writeSync( reply );
+            playerSession.getUserConnection().writeSync( reply );
         }
         finally {
             acknowledge();

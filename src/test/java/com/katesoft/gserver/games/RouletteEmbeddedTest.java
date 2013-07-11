@@ -24,6 +24,7 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
     public void works() throws InterruptedException, ExecutionException {
         login();
         OpenGamePlayReply openGamePlay = openGamePlay( RouletteGame.class );
+        openGamePlay(RouletteGame.class);
 
         RouletteBetPosition position = RouletteBetPosition.values()[RouletteBetPosition.values().length - 4];
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();

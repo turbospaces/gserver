@@ -45,7 +45,7 @@ public class RouletteGameTest {
         int payout = positionPayout.getPayout();
         UserConnection.UserConnectionStub uc = new UserConnection.UserConnectionStub();
         final PlayerSession playerSession = Mockito.mock( PlayerSession.class );
-        Mockito.when( playerSession.getAssociatedUserConnection() ).thenReturn( uc );
+        Mockito.when( playerSession.getUserConnection() ).thenReturn( uc );
 
         assertTrue( repeatConcurrently( payout * 100, new Runnable() {
             @Override

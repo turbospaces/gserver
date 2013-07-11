@@ -6,7 +6,7 @@ import org.junit.Test;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 
 public class EncryptorsTest {
-    TextEncryptor enc = Encryptors.textEnc( "XXX" );
+    TextEncryptor enc = Encryptors.textEncryptor( "XXX", false );
 
     @Test
     public void works() {

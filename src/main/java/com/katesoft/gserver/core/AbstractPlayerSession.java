@@ -1,5 +1,6 @@
 package com.katesoft.gserver.core;
 
+import com.google.common.base.Objects;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
@@ -41,11 +42,11 @@ public abstract class AbstractPlayerSession implements PlayerSession {
         return player;
     }
     @Override
-    public final UserConnection getAssociatedUserConnection() {
+    public final UserConnection getUserConnection() {
         return userConnection;
     }
     @Override
-    public final Game getAssociatedGame() {
+    public final Game getGame() {
         return game;
     }
     @Override
@@ -53,7 +54,7 @@ public abstract class AbstractPlayerSession implements PlayerSession {
         return betLimits;
     }
     @Override
-    public final GameBO getAssociatedGameDefinition() {
+    public final GameBO getGameMeta() {
         return gameDefinition;
     }
     @Override
@@ -62,6 +63,17 @@ public abstract class AbstractPlayerSession implements PlayerSession {
     }
     @Override
     public void close() {
-        getAssociatedGame().close();
+        getGame().close();
+    }
+    @Override
+    public String toString() {
+        return Objects
+                .toStringHelper( this )
+                .add( "sessionId", id() )
+                .add( "player", getPlayer() )
+                .add( "game", getGame() )
+                .add( "betLimits", getBetLimits() )
+                .add( "coins", getCoins() )
+                .toString();
     }
 }

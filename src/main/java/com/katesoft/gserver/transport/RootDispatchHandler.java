@@ -145,7 +145,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
     }
 
     static final class SocketUserConnection extends UserConnectionStub {
-        private static final TextEncryptor ENCRYPTOR = Encryptors.textEnc( SocketUserConnection.class.getName() );
+        private static final TextEncryptor ENCRYPTOR = Encryptors.textEncryptor( SocketUserConnection.class.getName(), false );
 
         private final SocketChannel ch;
         private final ChannelGroup connections;

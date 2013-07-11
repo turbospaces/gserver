@@ -2,15 +2,43 @@ package com.katesoft.gserver.core;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import org.jasypt.util.password.BasicPasswordEncryptor;
+import org.jasypt.util.password.PasswordEncryptor;
+import org.jasypt.util.password.StrongPasswordEncryptor;
 import org.jasypt.util.text.BasicTextEncryptor;
+import org.jasypt.util.text.StrongTextEncryptor;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 public class Encryptors {
     private static final String DELIMETER = ":";
 
-    public static TextEncryptor textEnc(String password) {
-        final BasicTextEncryptor enc = new BasicTextEncryptor();
-        enc.setPassword( password );
+    public static PasswordEncoder passwordEncryptor(boolean strong) {
+        final PasswordEncryptor enc = strong ? new StrongPasswordEncryptor() : new BasicPasswordEncryptor();
+        return new PasswordEncoder() {
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                return enc.checkPassword( rawPassword.toString(), encodedPassword );
+            }
+            @Override
+            public String encode(CharSequence rawPassword) {
+                return enc.encryptPassword( rawPassword.toString() );
+            }
+        };
+    }
+
+    public static TextEncryptor textEncryptor(String password, boolean strong) {
+        final org.jasypt.util.text.TextEncryptor enc;
+        if ( strong ) {
+            StrongTextEncryptor strongTextEncryptor = new StrongTextEncryptor();
+            strongTextEncryptor.encrypt( password );
+            enc = strongTextEncryptor;
+        }
+        else {
+            BasicTextEncryptor basicTextEncryptor = new BasicTextEncryptor();
+            basicTextEncryptor.setPassword( password );
+            enc = basicTextEncryptor;
+        }
         return new TextEncryptor() {
             @Override
             public String encrypt(String text) {

@@ -5,11 +5,19 @@ import java.io.Closeable;
 import org.apache.commons.chain.Command;
 import org.apache.commons.chain.Context;
 
-import com.katesoft.gserver.domain.BO;
+import com.katesoft.gserver.domain.Entities.BetLimits;
+import com.katesoft.gserver.domain.Entities.Coins;
+import com.katesoft.gserver.domain.GameBO;
 
-public interface Player extends Closeable, Command, BO {
+public interface Player extends Closeable, Command {
+    String userId();
     String displayName();
-    boolean addPlayerSession(PlayerSession s);
+    PlayerSession openPlayerSession(String sessionId,
+                                    UserConnection uc,
+                                    Game game,
+                                    GameBO gameBO,
+                                    BetLimits blimits,
+                                    Coins coins);
     /**
      * close all player sessions gracefully(method called upon user logout command).
      */

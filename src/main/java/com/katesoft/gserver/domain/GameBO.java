@@ -13,9 +13,9 @@ import com.katesoft.gserver.api.GamePlayContext;
 
 @Immutable
 public class GameBO implements BO {
-    private String shortcut;
-    private String displayName;
-    private String gameClassName;
+    private final String shortcut;
+    private final String displayName;
+    private final String gameClassName;
 
     public GameBO(String shortcut, String displayName, String gameClassName) {
         this.shortcut = shortcut;
@@ -29,17 +29,8 @@ public class GameBO implements BO {
     public String getDisplayName() {
         return displayName;
     }
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
-    public void setShortcut(String shortcut) {
-        this.shortcut = shortcut;
-    }
     public String getGameClassName() {
         return gameClassName;
-    }
-    public void setGameClassName(String gameClassName) {
-        this.gameClassName = gameClassName;
     }
     @SuppressWarnings("unchecked")
     public Game newInstance(final GamePlayContext ctx) {

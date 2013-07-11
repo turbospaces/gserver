@@ -123,7 +123,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         Builder b = BaseCommand.newBuilder().setProtocolVersion( "1.0" ).setExtension( ext, t ).setHeaders( headers );
         b = codec.encoder().apply( (Pair<Builder, GeneratedMessage>) ImmutablePair.of( b, t ) );
 
-        NetworkCommandContext ctx = new NetworkCommandContext( b.build(), codec, ps.getAssociatedUserConnection() );
+        NetworkCommandContext ctx = new NetworkCommandContext( b.build(), codec, ps.getUserConnection() );
         return new GameCommand( ctx, ps );
     }
     protected void login() {

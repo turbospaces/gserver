@@ -26,6 +26,7 @@ message CoinQuantitySlice {
 	required Coin coin = 1;
 	required int32 quantity = 2;
 }
+
 message Coins {
 	repeated Coin coins = 1;
 }
@@ -50,4 +51,14 @@ message BetLimits {
 	extensions 10 to 100;
 	required int32 minBet = 1;
 	required int32 maxBet = 2;
+}
+//
+// commons player settings
+//
+message PlayerSettings {
+	optional string displayName = 1;
+	optional string prefLang = 2;
+	optional string payoutCurrency = 3;
+	optional string disableMusic = 4;
+	optional string disableBackgroundSounds = 5;
 }
