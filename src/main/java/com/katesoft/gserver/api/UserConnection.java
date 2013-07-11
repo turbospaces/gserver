@@ -21,6 +21,13 @@ public interface UserConnection extends Closeable {
     void writeSync(BaseCommand message);
     Future<Void> writeAllAsync(BaseCommand message);
     ConnectionType connectionType();
+    /**
+     * close persistent user connection manually.</p>
+     * 
+     * <b>NOTE</b>: it's recommended to not close connection directly, but rather throw {@link DeadConnectionException}. </p>
+     */
+    @Override
+    void close();
 
     public static class UserConnectionStub implements UserConnection {
         private final Logger logger = LoggerFactory.getLogger( getClass() );

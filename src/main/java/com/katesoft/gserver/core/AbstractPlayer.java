@@ -24,24 +24,22 @@ import com.katesoft.gserver.api.PlayerSession;
 public abstract class AbstractPlayer implements Player {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
     private final Set<PlayerSession> sessions = Sets.newHashSet();
-    protected String id, displayName, email;
+    protected String id, displayName;
 
-    public AbstractPlayer(String id, String email) {
+    public AbstractPlayer(String id) {
         this.id = id;
-        this.email = email;
     }
     protected AbstractPlayer() {}
     @Override
     public String id() {
         return id;
     }
+    public void displayName(String displayName) {
+        this.displayName = displayName;
+    }
     @Override
     public String displayName() {
         return displayName;
-    }
-    @Override
-    public String email() {
-        return email;
     }
     @Override
     public synchronized boolean addPlayerSession(PlayerSession s) {

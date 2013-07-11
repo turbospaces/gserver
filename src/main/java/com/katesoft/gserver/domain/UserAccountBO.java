@@ -8,9 +8,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 @SuppressWarnings("serial")
-public class UserAccount extends UserAccountBase implements UserDetails, BO {
-    public UserAccount() {}
-    public UserAccount(UserAccountBase accountBase) {
+public class UserAccountBO extends UserAccountBase implements UserDetails, BO {
+    public UserAccountBO() {}
+    public UserAccountBO(UserAccountBase accountBase) {
         super( accountBase );
     }
     @Override
@@ -27,7 +27,7 @@ public class UserAccount extends UserAccountBase implements UserDetails, BO {
     }
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return isEnabled();
     }
     @Override
     public boolean isCredentialsNonExpired() {

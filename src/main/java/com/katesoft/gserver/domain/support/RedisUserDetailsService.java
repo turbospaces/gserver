@@ -5,19 +5,19 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import com.google.common.base.Optional;
-import com.katesoft.gserver.domain.DomainRepository;
-import com.katesoft.gserver.domain.UserAccount;
+import com.katesoft.gserver.domain.RedisDomainRepository;
+import com.katesoft.gserver.domain.UserAccountBO;
 
 public class RedisUserDetailsService implements UserDetailsService {
-    private final DomainRepository repo;
+    private final RedisDomainRepository repo;
 
-    public RedisUserDetailsService(DomainRepository repo) {
+    public RedisUserDetailsService(RedisDomainRepository repo) {
         this.repo = repo;
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Optional<UserAccount> opt = repo.findUserAccount( username );
+        Optional<UserAccountBO> opt = repo.findUserAccount( username );
         if ( opt.isPresent() ) {
             return opt.get();
         }

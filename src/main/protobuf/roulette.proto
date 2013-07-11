@@ -1,4 +1,5 @@
 import "commands.proto";
+import "domain.proto";
 
 package gserver.games.roullete;
 

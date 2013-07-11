@@ -8,7 +8,6 @@ import org.apache.commons.chain.Context;
 public interface Player extends Closeable, Command {
     String id();
     String displayName();
-    String email();
     boolean addPlayerSession(PlayerSession s);
     /**
      * close all player sessions gracefully(method called upon user logout command).

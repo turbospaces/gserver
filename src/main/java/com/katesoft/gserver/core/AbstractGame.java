@@ -13,10 +13,12 @@ import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GameCommandInterpreter;
 import com.katesoft.gserver.api.GamePlayContext;
+import com.katesoft.gserver.domain.GameBO;
 
 public abstract class AbstractGame implements Game {
     protected transient GamePlayContext gamePlayContext;
     protected transient GameCommandInterpreter interpreter;
+    protected transient GameBO definition;
     private transient final Supplier<List<ScheduledFuture<?>>> scheduledTasks = memoize( new Supplier<List<ScheduledFuture<?>>>() {
         @Override
         public List<ScheduledFuture<?>> get() {

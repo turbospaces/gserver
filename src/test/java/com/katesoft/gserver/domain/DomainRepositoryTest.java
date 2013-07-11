@@ -1,50 +1,19 @@
 package com.katesoft.gserver.domain;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.StringRedisTemplate;
 
-public class DomainRepositoryTest {
-    JedisConnectionFactory cf;
-    StringRedisTemplate template;
-    DomainRepository repo;
+import com.katesoft.gserver.games.RouletteGame;
 
-    @Before
-    public void before() {
-        cf = new JedisConnectionFactory();
-        cf.afterPropertiesSet();
-
-        template = new StringRedisTemplate( cf );
-        template.afterPropertiesSet();
-
-        repo = new DomainRepository( template );
-        template.execute( new RedisCallback<Void>() {
-            @Override
-            public Void doInRedis(RedisConnection connection) throws DataAccessException {
-                connection.flushAll();
-                return null;
-            }
-        } );
-    }
-
-    @After
-    public void after() {
-        cf.destroy();
-    }
-
+public class DomainRepositoryTest extends AbstractDomainTest {
     @Test
-    public void addUserAccountWorks() {
-        UserAccount acc = new UserAccount();
+    public void users() {
+        UserAccountBO acc = new UserAccountBO();
         acc.setFirstname( "gserver_firstname" );
         acc.setLastname( "gserver_lastname" );
         acc.setEmail( "gserver@gmail.com" );
@@ -54,7 +23,7 @@ public class DomainRepositoryTest {
         acc.setUsername( "gserver_username" );
 
         repo.saveUserAccount( acc );
-        UserAccount copy = repo.findUserAccount( acc.getPrimaryKey() ).get();
+        UserAccountBO copy = repo.findUserAccount( acc.getPrimaryKey() ).get();
         assertTrue( EqualsBuilder.reflectionEquals( acc, copy, false ) );
 
         try {
@@ -63,5 +32,18 @@ public class DomainRepositoryTest {
         }
         catch ( DuplicateKeyException e ) {}
         repo.deleteUserAccount( acc );
+    }
+    @Test
+    public void games() {
+        GameBO bo1 = new GameBO( "amrl", "American Roulette", RouletteGame.class.getName() );
+        GameBO bo2 = new GameBO( "eurl", "Europeane Roulette", RouletteGame.class.getName() );
+
+        repo.saveGame( bo1 );
+        repo.saveGame( bo2 );
+        GameBO clone1 = repo.findGame( bo1.getPrimaryKey() ).get();
+        GameBO clone2 = repo.findGame( bo2.getPrimaryKey() ).get();
+        assertTrue( EqualsBuilder.reflectionEquals( bo1, clone1, false ) );
+        assertTrue( EqualsBuilder.reflectionEquals( bo2, clone2, false ) );
+        assertEquals( repo.findAllGames().size(), 2 );
     }
 }

@@ -5,8 +5,6 @@ import static com.katesoft.gserver.misc.Misc.nextAvailablePort;
 import static com.katesoft.gserver.misc.Misc.shortHostname;
 import static org.apache.commons.lang3.tuple.ImmutablePair.of;
 
-import java.util.concurrent.ExecutionException;
-
 import org.junit.After;
 import org.junit.Test;
 
@@ -37,7 +35,7 @@ public class ProxyTcpServerTest extends AbstractEmbeddedTest {
         proxy.close();
     }
     @Test
-    public void works() throws InterruptedException, ExecutionException {
+    public void works() {
         login();
         anotherServer.close();
         login();

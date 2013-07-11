@@ -6,8 +6,11 @@ import org.apache.commons.chain.Chain;
 import org.apache.commons.chain.impl.ChainBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.dao.DataRetrievalFailureException;
 
 import com.google.protobuf.ExtensionRegistry;
+import com.katesoft.gserver.api.DeadConnectionException;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
@@ -32,11 +35,30 @@ public class MessageDispatcher implements TransportMessageListener {
         NetworkCommandContext ctx = new NetworkCommandContext( cmd, platformInterface.commandsCodec(), uc );
 
         Chain chain = cmdExecChain( ctx, uc );
-        boolean processed = chain.execute( ctx );
+        try {
+            boolean processed = chain.execute( ctx );
 
-        if ( !processed ) {
-            UnknownCommadException reply = UnknownCommadException.newBuilder().setReq( ctx.getCmd() ).build();
-            uc.writeAsync( toReply( ctx.getCmd(), ctx.getCmdCodec(), UnknownCommadException.cmd, reply ) );
+            if ( !processed ) {
+                UnknownCommadException reply = UnknownCommadException.newBuilder().setReq( ctx.getCmd() ).build();
+                uc.writeAsync( toReply( ctx.getCmd(), ctx.getCmdCodec(), UnknownCommadException.cmd, reply ) );
+            }
+        }
+        /**
+         * handle some common exceptions:
+         * 1) unexpected data retrieval (object retrieval)
+         * 2) concurrency modification failures
+         * 3) dead connection exception.
+         */
+        catch ( DataRetrievalFailureException ex ) {
+            throw ex;
+        }
+        catch ( ConcurrencyFailureException ex ) {
+            throw ex;
+        }
+        catch ( DeadConnectionException ex ) {
+            logger.error( ex.getMessage(), ex );
+            logger.error( "closing connection = {} due to failed game login procedure", uc );
+            uc.close();
         }
     }
     /**

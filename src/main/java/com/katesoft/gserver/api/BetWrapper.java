@@ -4,10 +4,10 @@ import static com.google.common.base.Objects.toStringHelper;
 import static com.google.common.math.LongMath.mod;
 import static java.lang.System.currentTimeMillis;
 
-import com.katesoft.gserver.commands.Commands.Bet;
-import com.katesoft.gserver.commands.Commands.BetResult;
-import com.katesoft.gserver.commands.Commands.Coin;
-import com.katesoft.gserver.commands.Commands.CoinQuantitySlice;
+import com.katesoft.gserver.domain.Entities.Bet;
+import com.katesoft.gserver.domain.Entities.BetResult;
+import com.katesoft.gserver.domain.Entities.Coin;
+import com.katesoft.gserver.domain.Entities.CoinQuantitySlice;
 
 public class BetWrapper {
     private final Bet bet;
@@ -44,6 +44,15 @@ public class BetWrapper {
                     break;
                 case HUNDRED:
                     betAmount += 100 * quantity;
+                    break;
+                case FIVE_HUNDRED:
+                    betAmount += 5 * 100 * quantity;
+                    break;
+                case THOUSAND:
+                    betAmount += 1000 * quantity;
+                    break;
+                case TEN_THOUSANDS:
+                    betAmount += 10 * 1000 * quantity;
                     break;
                 default:
                     break;

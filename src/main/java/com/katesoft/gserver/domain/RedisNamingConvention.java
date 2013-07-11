@@ -34,9 +34,17 @@ public class RedisNamingConvention {
     public RedisNamingConvention(StringRedisTemplate template, Class<?> persistentClass) {
         this.template = template;
         this.opsForValue = template.opsForValue();
-        this.namespace = persistentClass.getSimpleName().toLowerCase();
+
+        String simpleName = persistentClass.getSimpleName().toLowerCase();
+        int idx = simpleName.indexOf( "bo" );
+        if ( idx > 0 ) {
+            this.namespace = simpleName.substring( 0, idx );
+        }
+        else {
+            this.namespace = simpleName;
+        }
     }
-    public long
+    public Long
             save(String pk, Function<BoundHashOperations<String, String, String>, Void> mapper) throws ConcurrencyFailureException, DuplicateKeyException {
         String x = toPrimaryKey( pk );
 
@@ -47,7 +55,7 @@ public class RedisNamingConvention {
             if ( added ) {
                 BoundHashOperations<String, String, String> ops = template.boundHashOps( toEntityUid( id.toString() ) );
                 mapper.apply( ops );
-                return id.longValue();
+                return id;
             }
             else {
                 String exception = String.format( "detected concurrent modification exception for key = %s", x );
@@ -75,17 +83,17 @@ public class RedisNamingConvention {
         checkNotNull( pk, "primary key not provided" );
 
         String x = toPrimaryKey( pk );
-        String entityUid = opsForValue.get( x );
+        String uid = opsForValue.get( x );
         T entity = null;
 
-        if ( entityUid != null ) {
-            entity = findByGeneratedId( entityUid, mapper );
+        if ( uid != null ) {
+            entity = findByGeneratedId( Long.parseLong( uid ), mapper );
         }
 
         return Optional.fromNullable( entity );
     }
-    public <T extends BO> T findByGeneratedId(String generatedId, Function<BoundHashOperations<String, String, String>, T> mapper) {
-        BoundHashOperations<String, String, String> ops = template.boundHashOps( toEntityUid( generatedId ) );
+    public <T extends BO> T findByGeneratedId(Long generatedId, Function<BoundHashOperations<String, String, String>, T> mapper) {
+        BoundHashOperations<String, String, String> ops = template.boundHashOps( toEntityUid( generatedId.toString() ) );
         return mapper.apply( ops );
     }
     public String findFieldValueByGeneratedId(String generatedId, Function<BoundHashOperations<String, String, String>, String> mapper) {

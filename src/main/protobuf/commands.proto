@@ -1,15 +1,26 @@
+import "domain.proto";
+
 package gserver;
 
 option optimize_for = SPEED;
 option java_package = "com.katesoft.gserver.commands";
 option java_outer_classname = "Commands";
 //
+// attributes for each commands in protocol(transport level).
+//
 message MessageHeaders {
 	required string correlationID = 1;
 	required int64 sequenceNumber = 2;
 	required int64 messageTimestamp = 3;
 }
-
+//
+// Base command defines:
+// 1) qualifier - fully/shortly qualified name of the command (i.e. 'login' or 'your.namespace.logincommand').
+// 2) headers - transport level attributes.
+// 3) protocolVersion - defines which protocol is being used on client side(server may want not be backwards compatible).
+// 4) sessionId - if the user started game play, the game play will be always bound to session context.
+// 5) debug - enable excessive command processing logging on server and command level.
+//
 message BaseCommand {
 	extensions 100 to max;
 	required string qualifier = 1;
@@ -19,6 +30,10 @@ message BaseCommand {
 	optional bool debug = 5;
 }
 
+//
+// server is not aware how to process inbound command (or either game specific command or platform command),
+// possibly due to protocol version collision or any other difficulties.
+//
 message UnknownCommadException {
 	extend BaseCommand {
 		required UnknownCommadException cmd = 100;
@@ -26,94 +41,78 @@ message UnknownCommadException {
 	required BaseCommand req = 1;
 	optional string game = 2;
 }
-
+//
+// login into game play with some token (for web applications it's may be cookie), but it's rather abstract.
+// client needs to specify the target platform and optionally preferred game display language.
+// server responds with LoginCommandReply message (generates session id).
+// if the login command fails for any reason, server closes connection (and sends description to client before), so there is no special reply.
+//
 message LoginCommand {
 	extend BaseCommand {
 		required LoginCommand cmd = 101;
 	}
-	required string playerId = 1;
-	required string credentials = 2;
+	required string token = 1;
 	required string clientPlatform = 3;
 	optional string lang = 4;
-	optional string sessionId = 5;
 }
-
-message LoginCommandReply {
+//
+// if the game login fails, server sends this reply to client synchronously and closes connection.
+// if the server in development mode, sends stack trace additionally.
+//
+message LoginCommnadException {
 	extend BaseCommand {
-		required LoginCommandReply cmd = 102;
+		required LoginCommnadException cmd = 102;
 	}
-	required LoginCommand req = 1;
+	required string msg = 1;
+	optional string stacktrace = 2;
 }
-
-message OpenGamePlayCommand {
-	extend BaseCommand {
-		required OpenGamePlayCommand cmd = 103;
-	}
-	required string gameId = 1;
-}
-
-message OpenGamePlayReply {
-	extend BaseCommand {
-		required OpenGamePlayReply cmd = 104;
-	}
-	required OpenGamePlayCommand req = 1;
-	required string sessionId = 2;
-}
-
+//
+// gracefully close game play (without broken games creation, etc).
+// this command expected by server at the end of game play.
+// no response required to client.
+//
 message CloseGamePlayAndLogoutCommand {
 	extend BaseCommand {
-		required CloseGamePlayAndLogoutCommand cmd = 105;
+		required CloseGamePlayAndLogoutCommand cmd = 103;
 	}
 }
-
+//
+// update common game play settings:
+// 1) display user name
+// 2) preferred display language
+// 3) preferred pay-out currency
+// 4) disable music (game music and background sounds)
+//
 message UpdatePlayerSettingsCommand {
 	extend BaseCommand {
-		required UpdatePlayerSettingsCommand cmd = 106;
+		required UpdatePlayerSettingsCommand cmd = 104;
 	}
 	optional string displayName = 1;
 	optional string prefLang = 2;
-	optional string prefCurrency = 3;
+	optional string payoutCurrency = 3;
 	optional string disableMusic = 4;
 	optional string disableBackgroundSounds = 5;
 }
-
-message GetGameSettingsCommand {
+//
+// open game play for specific game.
+// most likely after starting game client will issue additional command to retrieve game settings.
+//
+message OpenGamePlayCommand {
 	extend BaseCommand {
-		required GetGameSettingsCommand cmd = 107;
+		required OpenGamePlayCommand cmd = 113;
 	}
-	required BetLimits betLimits = 1;
-	repeated Coin coins = 2;
+	required string gameId = 1;
 }
-
-enum Coin {
-	ONE = 1;
-	TWO = 2;
-	FIVE = 3;
-	TEN = 4;
-	TWENTY_FIVE = 5;
-	FIFTY = 6;
-	HUNDRED = 7;
-	FIVE_HUNDRED = 8;
-	THOUSAND = 9;
-}
-
-message CoinQuantitySlice {
-	required Coin coin = 1;
-	required int32 quantity = 2;
-}
-
-message Bet {
-	repeated CoinQuantitySlice slices = 1;
-}
-
-message BetResult {
-	required Bet bet = 1;
-	required bool win = 2;
-	required int32 amountUnsigned = 3;
-}
-
-message BetLimits {
-	extensions 10 to 100;
-	required int32 minBet = 1;
-	required int32 maxBet = 2;
+//
+// reply to open game play command.
+// contains bet limits for the game and coins layout and game display name.
+//
+message OpenGamePlayReply {
+	extend BaseCommand {
+		required OpenGamePlayReply cmd = 114;
+	}
+	required string sessionId = 1;
+	required string displayName = 2;
+	required BetLimits betLimits = 3;
+	repeated Coin coins = 4;
 }

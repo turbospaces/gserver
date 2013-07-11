@@ -17,6 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.GeneratedMessage;
@@ -31,7 +34,6 @@ import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
-import com.katesoft.gserver.commands.Commands.LoginCommandReply;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
@@ -39,6 +41,8 @@ import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
 import com.katesoft.gserver.core.MessageDispatcher;
 import com.katesoft.gserver.core.NetworkCommandContext;
+import com.katesoft.gserver.domain.AbstractDomainTest;
+import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.games.RouletteGame;
 import com.katesoft.gserver.games.roullete.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
@@ -48,7 +52,7 @@ import com.katesoft.gserver.transport.NettyServer;
 import com.katesoft.gserver.transport.NettyTcpClient;
 import com.katesoft.gserver.transport.ProxyServer;
 
-public abstract class AbstractEmbeddedTest {
+public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     public static final ScheduledExecutorService SCHEDULED_EXEC = newSingleThreadScheduledExecutor();
     public static final ExtensionRegistry EXTENSION_REGISTRY = com.katesoft.gserver.core.Commands.newMessageRegistry();
 
@@ -66,7 +70,7 @@ public abstract class AbstractEmbeddedTest {
     @Before
     public void setup() throws Exception {
         if ( s == null ) {
-            MessageDispatcher mld = mockMessageListener();
+            MessageDispatcher mld = messageListener();
             TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
 
             s = new NettyServer();
@@ -91,11 +95,20 @@ public abstract class AbstractEmbeddedTest {
     public static void afterClass() {
         shutdownExecutor( SCHEDULED_EXEC );
         try {
-            c.close();
+            try {
+                c.close();
+            }
+            finally {
+                s.close();
+            }
         }
         finally {
-            s.close();
+            AbstractDomainTest.afterClass();
         }
+    }
+    @SuppressWarnings("unused")
+    protected ProxyServer setupProxy(NettyServer ns, HostAndPort actualPort) throws Exception {
+        return null;
     }
     @SuppressWarnings({ "unchecked" })
     public static <T> GameCommand mockCommandEvent(GeneratedExtension<BaseCommand, T> ext, T t, PlayerSession ps, ProtoCommandsCodec codec) {
@@ -113,39 +126,44 @@ public abstract class AbstractEmbeddedTest {
         NetworkCommandContext ctx = new NetworkCommandContext( b.build(), codec, ps.getAssociatedUserConnection() );
         return new GameCommand( ctx, ps );
     }
-    @SuppressWarnings("unused")
-    protected ProxyServer setupProxy(NettyServer ns, HostAndPort actualPort) throws Exception {
-        return null;
+    protected void login() {
+        LoginCommand cmd = LoginCommand.newBuilder().setToken( loginToken ).setClientPlatform( "flash" ).build();
+        c.callAsync( LoginCommand.cmd, cmd, null, true );
     }
-    protected void login() throws InterruptedException, ExecutionException {
-        LoginCommand cmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();
-        BaseCommand bcmd = c.callAsync( LoginCommand.cmd, cmd, null, true ).get();
-        checkNotNull( bcmd.getExtension( LoginCommandReply.cmd ) );
-    }
-    protected OpenGamePlayReply openGamePlay(Class<? extends Game> game) throws InterruptedException, ExecutionException {
-        OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId( game.getSimpleName() ).build();
+    protected OpenGamePlayReply openGamePlay(final Class<? extends Game> game) throws InterruptedException, ExecutionException {
+        ImmutableSet<GameBO> allGames = repo.findAllGames();
+        GameBO bo = Iterables.find( allGames, new Predicate<GameBO>() {
+            @Override
+            public boolean apply(GameBO input) {
+                return input.getGameClassName().equals( game.getName() );
+            }
+        } );
+
+        OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId( bo.getPrimaryKey() ).build();
         BaseCommand bcmd = c.callAsync( OpenGamePlayCommand.cmd, cmd, null, true ).get();
         OpenGamePlayReply reply = bcmd.getExtension( OpenGamePlayReply.cmd );
         checkNotNull( reply.getSessionId() );
         return reply;
     }
-
-    @SuppressWarnings("unchecked")
-    public static MessageDispatcher mockMessageListener() {
+    public static MessageDispatcher messageListener() {
         ProtoCommandsCodec codec = new CommandsQualifierCodec.ProtoCommandsCodec( EXTENSION_REGISTRY );
         AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
-        AbstractPlatformInterface platform = new AbstractPlatformInterface( ctx, codec ) {};
-        platform.setSupportedGames( RouletteGame.class );
+
+        repo.saveGame( new GameBO( "amrl", "American Roulette", RouletteGame.class.getName() ) );
+
+        AbstractPlatformInterface platform = new AbstractPlatformInterface( ctx, codec, repo, rememberMeServices ) {};
         MessageDispatcher mld = new MessageDispatcher( platform, EXTENSION_REGISTRY );
         return mld;
     }
 
     public static void main(String... args) throws InterruptedException {
+        AbstractDomainTest.beforeClass();
+        new AbstractDomainTest(){}.before();
         TransportServer.TransportServerSettings settings = new TransportServer.TransportServerSettings();
         settings.tcp = fromParts( "localhost", 8189 );
         settings.websockets = Optional.of( fromParts( "localhost", 8190 ) );
 
-        MessageDispatcher mld = mockMessageListener();
+        MessageDispatcher mld = messageListener();
 
         NettyServer ms = new NettyServer();
         ms.startServer( settings, mld );

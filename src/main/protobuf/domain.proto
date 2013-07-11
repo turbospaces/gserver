@@ -1,0 +1,50 @@
+package gserver;
+
+option optimize_for = SPEED;
+option java_package = "com.katesoft.gserver.domain";
+option java_outer_classname = "Entities";
+
+//
+// define most commonly used coins
+//
+enum Coin {
+	ONE = 1;
+	TWO = 2;
+	FIVE = 3;
+	TEN = 4;
+	TWENTY_FIVE = 5;
+	FIFTY = 6;
+	HUNDRED = 7;
+	FIVE_HUNDRED = 8;
+	THOUSAND = 9;
+	TEN_THOUSANDS = 10;
+}
+//
+// coin + quantity
+//
+message CoinQuantitySlice {
+	required Coin coin = 1;
+	required int32 quantity = 2;
+}
+//
+// array of coin slices
+//
+message Bet {
+	repeated CoinQuantitySlice slices = 1;
+}
+//
+// return result of bet (win, lose, unsigned amount)
+//
+message BetResult {
+	required Bet bet = 1;
+	required bool win = 2;
+	required int32 amountUnsigned = 3;
+}
+//
+// define minimal bet amount and maximum bet amount.
+//
+message BetLimits {
+	extensions 10 to 100;
+	required int32 minBet = 1;
+	required int32 maxBet = 2;
+}

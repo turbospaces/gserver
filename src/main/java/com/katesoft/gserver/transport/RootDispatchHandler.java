@@ -156,7 +156,11 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         }
         @Override
         public String toString() {
-            return toStringHelper( this ).add( "id", id() ).add( "accepted", new Date( socketAcceptTimestamp() ) ).toString();
+            return toStringHelper( this )
+                    .add( "id", id() )
+                    .add( "remoteAddress", ch.remoteAddress() )
+                    .add( "accepted", new Date( socketAcceptTimestamp() ) )
+                    .toString();
         }
         private static String encodeId(SocketChannel ch) {
             /**

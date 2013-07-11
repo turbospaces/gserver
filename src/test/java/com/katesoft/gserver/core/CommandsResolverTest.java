@@ -20,7 +20,7 @@ public class CommandsResolverTest {
         ExtensionRegistry messageRegistry = Commands.newMessageRegistry();
 
         CommandsQualifierCodec r = new CommandsQualifierCodec.ProtoCommandsCodec( messageRegistry );
-        LoginCommand logCmd = LoginCommand.newBuilder().setPlayerId( "playerX" ).setCredentials( "tokenX" ).setClientPlatform( "flash" ).build();
+        LoginCommand logCmd = LoginCommand.newBuilder().setToken( "tokenX" ).setClientPlatform( "flash" ).build();
         Builder bcmdb = BaseCommand.newBuilder();
         bcmdb
                 .setDebug( false )

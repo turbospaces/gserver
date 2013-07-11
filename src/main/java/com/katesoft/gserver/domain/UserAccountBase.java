@@ -83,6 +83,9 @@ public abstract class UserAccountBase {
     public ProviderType getProviderType() {
         return ProviderType.valueOf( getProvider().toUpperCase() );
     }
+    public String toFullName() {
+        return getLastname() + " " + getFirstname();
+    }
     @Override
     public int hashCode() {
         return Objects.hashCode( getUsername() );
