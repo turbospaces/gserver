@@ -8,6 +8,10 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.dao.DuplicateKeyException;
 
+import com.google.common.collect.ImmutableSet;
+import com.katesoft.gserver.domain.Entities.BetLimits;
+import com.katesoft.gserver.domain.Entities.Coin;
+import com.katesoft.gserver.domain.Entities.Coins;
 import com.katesoft.gserver.games.RouletteGame;
 
 public class DomainRepositoryTest extends AbstractDomainTest {
@@ -45,5 +49,18 @@ public class DomainRepositoryTest extends AbstractDomainTest {
         assertTrue( EqualsBuilder.reflectionEquals( bo1, clone1, false ) );
         assertTrue( EqualsBuilder.reflectionEquals( bo2, clone2, false ) );
         assertEquals( repo.findAllGames().size(), 2 );
+    }
+    @Test
+    public void playerSessions() {
+        GameBO game = new GameBO( "amrl", "American Roulette", RouletteGame.class.getName() );
+        repo.saveGame( game );
+
+        BetLimits blimits = BetLimits.newBuilder().setMaxBet( Short.MAX_VALUE ).setMinBet( 1 ).build();
+        Coins coins = Coins.newBuilder().addAllCoins( ImmutableSet.copyOf( Coin.values() ) ).build();
+
+        PlayerSessionBO playerSession = new PlayerSessionBO( "session-x", "player-x", "connection-x", blimits, coins, game );
+        repo.savePlayerSession( playerSession );
+        PlayerSessionBO clone = repo.findPlayerSession( playerSession.getPrimaryKey() ).get();
+        assertTrue( EqualsBuilder.reflectionEquals( playerSession, clone, false ) );
     }
 }

@@ -56,6 +56,14 @@ public class GameBO implements BO {
         }
     }
     @Override
+    public int hashCode() {
+        return Objects.hashCode( getPrimaryKey() );
+    }
+    @Override
+    public boolean equals(Object obj) {
+        return Objects.equal( getPrimaryKey(), ( (GameBO) obj ).getPrimaryKey() );
+    }
+    @Override
     public String toString() {
         return Objects
                 .toStringHelper( this )

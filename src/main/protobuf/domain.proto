@@ -26,6 +26,9 @@ message CoinQuantitySlice {
 	required Coin coin = 1;
 	required int32 quantity = 2;
 }
+message Coins {
+	repeated Coin coins = 1;
+}
 //
 // array of coin slices
 //

@@ -105,7 +105,7 @@ public class RedisNamingConvention {
         String idFieldValue = findFieldValueByGeneratedId( generatedId, idMapper );
         deleteByPrimaryKey( idFieldValue );
     }
-    public void deleteByPrimaryKey(String pk) throws ConcurrencyFailureException {
+    public Long deleteByPrimaryKey(String pk) throws ConcurrencyFailureException {
         String x = toPrimaryKey( pk );
         String entityUid = opsForValue.get( x );
         if ( entityUid != null ) {
@@ -115,6 +115,7 @@ public class RedisNamingConvention {
                 ops.delete( key );
             }
             template.delete( x );
+            return Long.parseLong( entityUid );
         }
         else {
             String exception = String.format( "object with primary key = {} has been deleted in another transaction", x );

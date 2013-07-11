@@ -48,10 +48,6 @@ public abstract class AbstractGame implements Game {
         };
     }
     @Override
-    public String displayName() {
-        return getClass().getSimpleName();
-    }
-    @Override
     public GameCommandInterpreter commandInterpreter() {
         return interpreter;
     }

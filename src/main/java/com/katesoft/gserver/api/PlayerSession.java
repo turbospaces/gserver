@@ -2,9 +2,8 @@ package com.katesoft.gserver.api;
 
 import java.io.Closeable;
 
-import com.google.common.collect.ImmutableSet;
 import com.katesoft.gserver.domain.Entities.BetLimits;
-import com.katesoft.gserver.domain.Entities.Coin;
+import com.katesoft.gserver.domain.Entities.Coins;
 import com.katesoft.gserver.domain.GameBO;
 
 public interface PlayerSession extends Closeable {
@@ -31,7 +30,7 @@ public interface PlayerSession extends Closeable {
      * @return game instance.
      */
     Game getAssociatedGame();
-    
+
     /**
      * @return the associated game definition from which the game has been created.
      */
@@ -61,7 +60,7 @@ public interface PlayerSession extends Closeable {
      * 
      * @return coins configuration that has been assigned to player session.
      */
-    ImmutableSet<Coin> getCoins();
+    Coins getCoins();
 
     /**
      * close player session, persist the necessary data if needed in order to continue

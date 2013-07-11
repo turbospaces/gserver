@@ -5,8 +5,9 @@ import java.io.Closeable;
 import org.apache.commons.chain.Command;
 import org.apache.commons.chain.Context;
 
-public interface Player extends Closeable, Command {
-    String id();
+import com.katesoft.gserver.domain.BO;
+
+public interface Player extends Closeable, Command, BO {
     String displayName();
     boolean addPlayerSession(PlayerSession s);
     /**

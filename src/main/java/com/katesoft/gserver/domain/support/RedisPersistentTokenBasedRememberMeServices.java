@@ -30,6 +30,10 @@ public class RedisPersistentTokenBasedRememberMeServices extends PersistentToken
     public String encodeCookie(String[] cookieTokens) {
         return super.encodeCookie( cookieTokens );
     }
+    @Override
+    public String getCookieName() {
+        return super.getCookieName();
+    }
     public RedisPersistentTokenRepository getTokenRepository() {
         return tokenRepository;
     }

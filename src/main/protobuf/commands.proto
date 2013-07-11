@@ -42,6 +42,17 @@ message UnknownCommadException {
 	optional string game = 2;
 }
 //
+// if the game login fails, server sends this reply to client synchronously and closes connection.
+// if the server in development mode, sends stack trace additionally.
+//
+message LoginCommnadException {
+	extend BaseCommand {
+		required LoginCommnadException cmd = 101;
+	}
+	required string msg = 1;
+	optional string stacktrace = 2;
+}
+//
 // login into game play with some token (for web applications it's may be cookie), but it's rather abstract.
 // client needs to specify the target platform and optionally preferred game display language.
 // server responds with LoginCommandReply message (generates session id).
@@ -49,22 +60,20 @@ message UnknownCommadException {
 //
 message LoginCommand {
 	extend BaseCommand {
-		required LoginCommand cmd = 101;
+		required LoginCommand cmd = 102;
 	}
 	required string token = 1;
 	required string clientPlatform = 3;
 	optional string lang = 4;
 }
 //
-// if the game login fails, server sends this reply to client synchronously and closes connection.
-// if the server in development mode, sends stack trace additionally.
+// user can continue game play even after temporary server disconnection.
 //
-message LoginCommnadException {
+message ReloginCommand {
 	extend BaseCommand {
-		required LoginCommnadException cmd = 102;
+		required ReloginCommand cmd = 103;
 	}
-	required string msg = 1;
-	optional string stacktrace = 2;
+	required string token = 1;
 }
 //
 // gracefully close game play (without broken games creation, etc).
@@ -73,7 +82,7 @@ message LoginCommnadException {
 //
 message CloseGamePlayAndLogoutCommand {
 	extend BaseCommand {
-		required CloseGamePlayAndLogoutCommand cmd = 103;
+		required CloseGamePlayAndLogoutCommand cmd = 104;
 	}
 }
 //
@@ -85,7 +94,7 @@ message CloseGamePlayAndLogoutCommand {
 //
 message UpdatePlayerSettingsCommand {
 	extend BaseCommand {
-		required UpdatePlayerSettingsCommand cmd = 104;
+		required UpdatePlayerSettingsCommand cmd = 105;
 	}
 	optional string displayName = 1;
 	optional string prefLang = 2;
@@ -114,5 +123,5 @@ message OpenGamePlayReply {
 	required string sessionId = 1;
 	required string displayName = 2;
 	required BetLimits betLimits = 3;
-	repeated Coin coins = 4;
+	required Coins coins = 4;
 }

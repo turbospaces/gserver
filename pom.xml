@@ -25,6 +25,7 @@
 
         <!-- core -->
         <protobuf.version>2.5.0</protobuf.version>
+        <jackson.version>1.9.12</jackson.version>
         <protobuf.java.format.version>1.2</protobuf.java.format.version>
         <netty.version>4.0.0.CR3</netty.version>
         <javassist.version>3.17.1-GA</javassist.version>
@@ -74,6 +75,11 @@
             <groupId>com.googlecode.protobuf-java-format</groupId>
             <artifactId>protobuf-java-format</artifactId>
             <version>${protobuf.java.format.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
 
         <!-- netty -->

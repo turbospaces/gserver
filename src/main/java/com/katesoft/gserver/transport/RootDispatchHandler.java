@@ -1,9 +1,6 @@
 package com.katesoft.gserver.transport;
 
-import static com.google.common.base.Objects.toStringHelper;
-import static com.katesoft.gserver.misc.Misc.getPid;
 import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
-import static java.lang.System.currentTimeMillis;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
@@ -25,18 +22,16 @@ import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 
 import java.io.Closeable;
-import java.util.Date;
-import java.util.concurrent.atomic.AtomicReference;
+import java.net.InetSocketAddress;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 
 import com.google.common.base.Supplier;
-import com.google.common.util.concurrent.Atomics;
 import com.googlecode.protobuf.format.JsonFormat;
-import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.UserConnection;
+import com.katesoft.gserver.api.UserConnection.UserConnectionStub;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.core.Encryptors;
@@ -61,10 +56,22 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         connections.add( ch );
     }
     @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        SocketUserConnection c = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
+        LOGGER.error( String.format( "Unhandled exception occured in UserConnection=(%s) loop", c.id() ), cause );
+        super.exceptionCaught( ctx, cause );
+    }
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        SocketUserConnection c = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
+        super.channelInactive( ctx );
+        LOGGER.info( "channel={} close for UserConnection=({}). active connections left={}", ctx.channel(), c.id(), get().size() );
+    }
+    @Override
     public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
         SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
         if ( msg instanceof BaseCommand ) {
-            userConnection.connectionType = ConnectionType.TCP;
+            userConnection.setConnectionType( ConnectionType.TCP );
             eventBus.onMessage( (BaseCommand) msg, userConnection );
         }
         else if ( msg instanceof FullHttpRequest ) {
@@ -80,7 +87,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
                 handshaker.handshake( ctx.channel(), httpMsg );
                 ctx.channel().attr( WS_HANDSHAKER_ATTR ).set( handshaker );
             }
-            userConnection.connectionType = ConnectionType.WEBSOCKETS;
+            userConnection.setConnectionType( ConnectionType.WEBSOCKETS );
         }
         else if ( msg instanceof WebSocketFrame ) {
             WebSocketFrame frame = (WebSocketFrame) msg;
@@ -128,7 +135,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         return connections;
     }
     UserConnection find(String id) {
-        Integer x = SocketUserConnection.decodeId( id );
+        Integer x = Integer.parseInt( Encryptors.decode( SocketUserConnection.ENCRYPTOR, id )[1] );
         Channel ch = connections.find( x );
         return ch.attr( USER_CONNECTION_ATTR ).get();
     }
@@ -137,43 +144,20 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         return ch.attr( USER_CONNECTION_ATTR ).get();
     }
 
-    static final class SocketUserConnection implements UserConnection {
-        private static final TextEncryptor ENCRYPTOR = Encryptors.textEnc( SocketUserConnection.class.getSimpleName() );
-        private final String id;
+    static final class SocketUserConnection extends UserConnectionStub {
+        private static final TextEncryptor ENCRYPTOR = Encryptors.textEnc( SocketUserConnection.class.getName() );
+
         private final SocketChannel ch;
         private final ChannelGroup connections;
-        private final AtomicReference<Player> player = Atomics.newReference();
-        private ConnectionType connectionType = ConnectionType.TCP;
 
         public SocketUserConnection(SocketChannel ch, ChannelGroup connections) {
+            super( Encryptors.encode( ENCRYPTOR, SocketUserConnection.class.getSimpleName(), String.valueOf( ch.id() ) ) );
             this.ch = ch;
             this.connections = connections;
-            this.id = encodeId( ch );
         }
         @Override
-        public String id() {
-            return id;
-        }
-        @Override
-        public String toString() {
-            return toStringHelper( this )
-                    .add( "id", id() )
-                    .add( "remoteAddress", ch.remoteAddress() )
-                    .add( "accepted", new Date( socketAcceptTimestamp() ) )
-                    .toString();
-        }
-        private static String encodeId(SocketChannel ch) {
-            /**
-             * 1. timestamp
-             * 2. netty socket connection id
-             * 3. process id
-             */
-            String id = currentTimeMillis() + ":" + ch.id() + ":" + getPid();
-            return ENCRYPTOR.encrypt( id );
-        }
-        private static Integer decodeId(String id) {
-            String[] items = ENCRYPTOR.decrypt( id ).split( ":" );
-            return Integer.parseInt( items[1] );
+        public InetSocketAddress remoteAddress() {
+            return ch.remoteAddress();
         }
         @Override
         public Future<Void> writeAsync(BaseCommand message) {
@@ -195,6 +179,9 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
                     break;
                 }
                 case FLASH:
+                    if ( message.getDebug() ) {
+                        LOGGER.debug( "sending flash response={}", message );
+                    }
                     f = ch.write( message );
                     break;
             }
@@ -207,25 +194,6 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         @Override
         public Future<Void> writeAllAsync(BaseCommand message) {
             return connections.write( message );
-        }
-        @Override
-        public long socketAcceptTimestamp() {
-            String[] items = ENCRYPTOR.decrypt( id ).split( ":" );
-            return Long.parseLong( items[0] );
-        }
-        @Override
-        public Player asociatePlayer(Player p) {
-            Player prev = player.get();
-            player.compareAndSet( prev, p );
-            return prev;
-        }
-        @Override
-        public Player getAssociatedPlayer() {
-            return player.get();
-        }
-        @Override
-        public ConnectionType connectionType() {
-            return connectionType;
         }
         @Override
         public void close() {

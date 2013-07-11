@@ -75,8 +75,8 @@ public class MessageDispatcher implements TransportMessageListener {
     protected Chain cmdExecChain(NetworkCommandContext ctx, UserConnection uc) {
         Chain chain = new ChainBase();
         chain.addCommand( platformInterface.platformCommandsInterpreter() );
-        if ( uc.getAssociatedPlayer() != null ) {
-            chain.addCommand( uc.getAssociatedPlayer() );
+        if ( uc.associatedPlayer() != null ) {
+            chain.addCommand( uc.associatedPlayer() );
         }
         return chain;
     }
