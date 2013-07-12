@@ -66,8 +66,9 @@ public abstract class AbstractDomainTest {
 
         String tokenSeries = rememberMeServices.generateSeriesData();
         String tokenValue = rememberMeServices.generateTokenData();
-
-        loginToken = rememberMeServices.encodeCookie( new String[] { tokenSeries, tokenValue } );
+        
+        String rememberMe = rememberMeServices.encodeCookie( new String[] { tokenSeries, tokenValue } );
+        loginToken = rememberMeServices.encodeWebsocketLoginToken( rememberMe ).getToken();
 
         PersistentRememberMeToken token = new PersistentRememberMeToken( userAccount.getUsername(), tokenSeries, tokenValue, new Date() );
         tokenRepo.createNewToken( token );

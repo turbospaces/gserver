@@ -62,3 +62,13 @@ message PlayerSettings {
 	optional string disableMusic = 4;
 	optional string disableBackgroundSounds = 5;
 }
+//
+// server settings.
+//
+message ServerSettings {
+	// how long generated websockets login token to be valid.
+	// by default valid for 30 minutes.
+	required int32 websocketLoginTokenExpiration = 1 [default = 108000];
+	// password to use in order to encrypt generated websockets login token.
+	required string websocketLoginEncryptorPassword = 2 [default = 'wsLoginTokenEncryptor'];
+}

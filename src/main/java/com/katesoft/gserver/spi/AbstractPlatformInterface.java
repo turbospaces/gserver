@@ -165,7 +165,7 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
      * @return player.
      */
     protected Player login(String token) {
-        String[] parts = rememberMeServices.decodeCookie( token );
+        String[] parts = rememberMeServices.decodeWebsocketLoginToken( token );
         String series = parts[0];
         String tokenValue = parts[1];
 
@@ -175,6 +175,12 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
         UserAccountBO userAccount = (UserAccountBO) userDetailsService.loadUserByUsername( username );
         return initPlayer( userAccount );
     }
+    /**
+     * attempt to re-login (re-attach) user to existing session if possible. 
+     * 
+     * @param sessionId - player session id.
+     * @return player.
+     */
     protected Player relogin(String sessionId) {
         Optional<PlayerSessionBO> ongoing = repository.findPlayerSession( sessionId );
         PlayerSessionBO playerSession = required( ongoing, PlayerSessionBO.class, sessionId );
@@ -192,6 +198,15 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
         }
         return player;
     }
+    /**
+     * open new game player session and store relevant information to persistent data store.
+     * 
+     * @param gameCode - game shortcut.
+     * @param player - player instance.
+     * @param uc - user connection.
+     * 
+     * @return player session data.
+     */
     protected PlayerSessionBO openPlayerSession(String gameCode, Player player, UserConnection uc) {
         GameBO gameBO = required( repository.findGame( gameCode ), GameBO.class, gameCode );
         String sessionId = PlayerSessionBO.toSessionId( player, gameBO );

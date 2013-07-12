@@ -4,7 +4,7 @@ import static com.google.common.base.Objects.toStringHelper;
 
 import java.util.Date;
 
-public class WebSocketsLoginToken {
+public class WebsocketLoginToken {
     /**
      * when the web-socket login token to be considered as expired.
      */
