@@ -22,7 +22,7 @@ public abstract class AbstractDomainTest {
     protected static RedisDomainRepository repo;
     protected static RedisPersistentTokenRepository tokenRepo;
 
-    protected String loginToken;
+    protected String loginToken, username;
 
     @BeforeClass
     public static void beforeClass() {
@@ -36,7 +36,7 @@ public abstract class AbstractDomainTest {
         tokenRepo = new RedisPersistentTokenRepository( template );
 
         RedisUserDetailsService userDetailsService = new RedisUserDetailsService( repo );
-        rememberMeServices = new RedisPersistentTokenBasedRememberMeServices( "XXX", userDetailsService, tokenRepo ) {};
+        rememberMeServices = new RedisPersistentTokenBasedRememberMeServices( "XXX", userDetailsService, tokenRepo );
     }
     @AfterClass
     public static void afterClass() {
@@ -52,9 +52,10 @@ public abstract class AbstractDomainTest {
             }
         } );
 
+        username = "user-xxx";
         UserAccountBO userAccount = new UserAccountBO();
         userAccount.setEnabled( true );
-        userAccount.setUsername( "user-xxx" );
+        userAccount.setUsername( username );
         userAccount.setFirstname( "Big" );
         userAccount.setLastname( "Boss" );
         userAccount.setPassword( "password-xxx" );
@@ -66,7 +67,7 @@ public abstract class AbstractDomainTest {
 
         String tokenSeries = rememberMeServices.generateSeriesData();
         String tokenValue = rememberMeServices.generateTokenData();
-        
+
         String rememberMe = rememberMeServices.encodeCookie( new String[] { tokenSeries, tokenValue } );
         loginToken = rememberMeServices.encodeWebsocketLoginToken( rememberMe ).getToken();
 

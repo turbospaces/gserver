@@ -10,7 +10,7 @@ import com.katesoft.gserver.domain.WebsocketLoginToken;
 
 public class RedisPersistentTokenBasedRememberMeServices extends PersistentTokenBasedRememberMeServices {
     // TODO: externalize password
-    private final TextEncryptor encryptor = Encryptors.textEncryptor( getClass().getName(), false );
+    private final TextEncryptor encryptor = Encryptors.textEncryptor( RedisPersistentTokenBasedRememberMeServices.class.getName(), false );
     private final RedisPersistentTokenRepository tokenRepository;
 
     public RedisPersistentTokenBasedRememberMeServices(String key,
@@ -19,28 +19,27 @@ public class RedisPersistentTokenBasedRememberMeServices extends PersistentToken
         super( key, userDetailsService, tokenRepository );
         this.tokenRepository = tokenRepository;
     }
-
     @Override
-    public String generateSeriesData() {
+    public final String generateSeriesData() {
         return super.generateSeriesData();
     }
     @Override
-    public String generateTokenData() {
+    public final String generateTokenData() {
         return super.generateTokenData();
     }
     @Override
-    public String[] decodeCookie(String cookieValue) throws InvalidCookieException {
+    public final String[] decodeCookie(String cookieValue) throws InvalidCookieException {
         return super.decodeCookie( cookieValue );
     }
     @Override
-    public String encodeCookie(String[] cookieTokens) {
+    public final String encodeCookie(String[] cookieTokens) {
         return super.encodeCookie( cookieTokens );
     }
     @Override
-    public String getCookieName() {
+    public final String getCookieName() {
         return super.getCookieName();
     }
-    public RedisPersistentTokenRepository getTokenRepository() {
+    public final RedisPersistentTokenRepository getTokenRepository() {
         return tokenRepository;
     }
     public WebsocketLoginToken encodeWebsocketLoginToken(String rememberMeCookieValue) {

@@ -6,8 +6,6 @@ import static java.lang.String.format;
 
 import java.util.Map;
 
-import javax.annotation.Nullable;
-
 import org.apache.commons.chain.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +41,7 @@ public abstract class AbstractPlayer implements Player {
     public String displayName() {
         return displayName;
     }
+    // @formatter:off
     @Override
     public PlayerSession openPlayerSession(String sessionId,
                                            UserConnection uc,
@@ -54,16 +53,13 @@ public abstract class AbstractPlayer implements Player {
         sessions.put( session.id(), session );
         return session;
     }
+    // @formatter:on
     @Override
     public void closePlayerSession(final String sessionId) {
-        PlayerSession session = find( sessions.values(), new Predicate<PlayerSession>() {
-            @Override
-            public boolean apply(@Nullable PlayerSession input) {
-                return input.id().equals( sessionId );
-            }
-        } );
-        session.close();
-        sessions.remove( session );
+        PlayerSession session = sessions.remove( sessionId );
+        if ( session != null ) {
+            session.close();
+        }
     }
     @Override
     public void close() {
@@ -75,6 +71,7 @@ public abstract class AbstractPlayer implements Player {
                 logger.error( t.getMessage(), t );
             }
         }
+        sessions.clear();
     }
     @Override
     public boolean execute(final Context context) {

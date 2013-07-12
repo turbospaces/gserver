@@ -15,56 +15,59 @@ import com.katesoft.gserver.domain.BO;
 import com.katesoft.gserver.domain.RedisNamingConvention;
 
 public class RedisPersistentTokenRepository implements PersistentTokenRepository {
+    private static final String SERIES_NAMESPACE = "series";
     private final RedisNamingConvention namingConvention;
 
     public RedisPersistentTokenRepository(StringRedisTemplate template) {
-        namingConvention = new RedisNamingConvention(template, PersistentRememberMeToken.class);
+        namingConvention = new RedisNamingConvention( template, PersistentRememberMeToken.class );
     }
 
     @Override
     public void createNewToken(final PersistentRememberMeToken token) {
-        PersistentRememberMeTokenBOAdapter bo = new PersistentRememberMeTokenBOAdapter(token);
-        long id = namingConvention.save(bo.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
+        PersistentRememberMeTokenBOAdapter bo = new PersistentRememberMeTokenBOAdapter( token );
+        Long id = namingConvention.save( bo.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
             @Override
             public Void apply(BoundHashOperations<String, String, String> ops) {
-                ops.put("user_name", token.getUsername());
-                ops.put("token_value", token.getTokenValue());
-                ops.put("series", token.getSeries());
-                ops.put("date", String.valueOf(token.getDate().getTime()));
+                ops.put( "user_name", token.getUsername() );
+                ops.put( "token_value", token.getTokenValue() );
+                ops.put( "series", token.getSeries() );
+                ops.put( "date", String.valueOf( token.getDate().getTime() ) );
                 return null;
             }
-        });
-        namingConvention.newList(token.getUsername(), "series").add(String.valueOf(id));
+        } );
+        namingConvention.newList( token.getUsername(), SERIES_NAMESPACE ).add( id.toString() );
     }
     @Override
     public void updateToken(String series, final String tokenValue, final Date lastUsed) {
-        namingConvention.update(series, new Function<BoundHashOperations<String, String, String>, Void>() {
+        namingConvention.update( series, new Function<BoundHashOperations<String, String, String>, Void>() {
             @Override
             public Void apply(BoundHashOperations<String, String, String> ops) {
-                ops.put("token_value", tokenValue);
-                ops.put("date", String.valueOf(lastUsed.getTime()));
+                ops.put( "token_value", tokenValue );
+                ops.put( "date", String.valueOf( lastUsed.getTime() ) );
                 return null;
             }
-        });
+        } );
     }
     @Override
     public PersistentRememberMeToken getTokenForSeries(String seriesId) {
-        Optional<PersistentRememberMeTokenBOAdapter> opt = namingConvention.findByPrimaryKey(seriesId, PersistentRememberMeTokenBOAdapter.fromHashOps());
-        if (opt.isPresent()) {
+        Optional<PersistentRememberMeTokenBOAdapter> opt = namingConvention.findByPrimaryKey(
+                seriesId,
+                PersistentRememberMeTokenBOAdapter.fromHashOps() );
+        if ( opt.isPresent() ) {
             return opt.get().token;
         }
         return null;
     }
     @Override
     public void removeUserTokens(String username) {
-        DefaultRedisList<String> series = namingConvention.newList(username, "series");
-        for (Iterator<String> it = series.iterator(); it.hasNext(); ) {
-            namingConvention.deleteByGeneratedId(it.next(), new Function<BoundHashOperations<String, String, String>, String>() {
+        DefaultRedisList<String> series = namingConvention.newList( username, SERIES_NAMESPACE );
+        for ( Iterator<String> it = series.iterator(); it.hasNext(); ) {
+            namingConvention.deleteByGeneratedId( it.next(), new Function<BoundHashOperations<String, String, String>, String>() {
                 @Override
                 public String apply(BoundHashOperations<String, String, String> ops) {
-                    return ops.get("series");
+                    return ops.get( "series" );
                 }
-            });
+            } );
             it.remove();
         }
     }
@@ -86,12 +89,11 @@ public class RedisPersistentTokenRepository implements PersistentTokenRepository
                 @Override
                 public PersistentRememberMeTokenBOAdapter apply(BoundHashOperations<String, String, String> ops) {
                     PersistentRememberMeToken token = new PersistentRememberMeToken(
-                            ops.get("user_name"),
-                            ops.get("series"),
-                            ops.get("token_value"),
-                            new Date(Long.parseLong(ops.get("date")))
-                    );
-                    return new PersistentRememberMeTokenBOAdapter(token);
+                            ops.get( "user_name" ),
+                            ops.get( "series" ),
+                            ops.get( "token_value" ),
+                            new Date( Long.parseLong( ops.get( "date" ) ) ) );
+                    return new PersistentRememberMeTokenBOAdapter( token );
                 }
             };
         }

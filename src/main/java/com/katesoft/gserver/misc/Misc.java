@@ -39,7 +39,6 @@ import com.sun.jna.Platform;
  * 
  * @author andrey borisov
  */
-@SuppressWarnings("restriction")
 public abstract class Misc {
     private static final Logger LOGGER = LoggerFactory.getLogger( Misc.class );
     private static final sun.misc.Unsafe UNSAFE;

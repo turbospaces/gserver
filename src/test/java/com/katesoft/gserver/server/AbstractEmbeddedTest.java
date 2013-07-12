@@ -33,6 +33,8 @@ import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
+import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutCommand;
+import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutReply;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
@@ -130,6 +132,11 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         LoginCommand cmd = LoginCommand.newBuilder().setToken( loginToken ).setClientPlatform( "flash" ).build();
         c.callAsync( LoginCommand.cmd, cmd, null, true );
     }
+    protected CloseGamePlayAndLogoutReply logout(String sessionId) throws InterruptedException, ExecutionException {
+        CloseGamePlayAndLogoutCommand cmd = CloseGamePlayAndLogoutCommand.newBuilder().setForceCloseConnection( false ).build();
+        BaseCommand bcmd = c.callAsync( CloseGamePlayAndLogoutCommand.cmd, cmd, sessionId, true ).get();
+        return bcmd.getExtension( CloseGamePlayAndLogoutReply.cmd );
+    }
     protected OpenGamePlayReply openGamePlay(final Class<? extends Game> game) throws InterruptedException, ExecutionException {
         ImmutableSet<GameBO> allGames = repo.findAllGames();
         GameBO bo = Iterables.find( allGames, new Predicate<GameBO>() {
@@ -150,6 +157,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
 
         repo.saveGame( new GameBO( "amrl", "American Roulette", RouletteGame.class.getName() ) );
+        // repo.saveGame( new GameBO( "eurl", "Europeane Roulette", RouletteGame.class.getName() ) );
 
         AbstractPlatformInterface platform = new AbstractPlatformInterface( ctx, codec, repo, rememberMeServices ) {};
         MessageDispatcher mld = new MessageDispatcher( platform, EXTENSION_REGISTRY );
@@ -158,7 +166,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
 
     public static void main(String... args) throws InterruptedException {
         AbstractDomainTest.beforeClass();
-        new AbstractDomainTest(){}.before();
+        new AbstractDomainTest() {}.before();
         TransportServer.TransportServerSettings settings = new TransportServer.TransportServerSettings();
         settings.tcp = fromParts( "localhost", 8189 );
         settings.websockets = Optional.of( fromParts( "localhost", 8190 ) );

@@ -28,6 +28,7 @@ import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutCommand;
+import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutReply;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommnadException;
 import com.katesoft.gserver.commands.Commands.LoginCommnadException.Builder;
@@ -116,10 +117,10 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
                 else if ( OpenGamePlayCommand.class == type ) {
                     OpenGamePlayCommand openGamePlay = cmd.getExtension( OpenGamePlayCommand.cmd );
                     Player player = uc.associatedPlayer();
-                    PlayerSessionBO playerSession = openPlayerSession( openGamePlay.getGameId(), player, uc );
+                    OpenGamePlayReply.Builder b = OpenGamePlayReply.newBuilder();
+                    PlayerSessionBO playerSession = openPlayerSession( openGamePlay.getGameId(), player, uc, b );
 
-                    OpenGamePlayReply reply = OpenGamePlayReply
-                            .newBuilder()
+                    OpenGamePlayReply reply = b
                             .setSessionId( playerSession.sessionId )
                             .setBetLimits( playerSession.betLimits )
                             .setCoins( playerSession.coins )
@@ -129,10 +130,17 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
                     processed = PROCESSING_COMPLETE;
                 }
                 else if ( CloseGamePlayAndLogoutCommand.class == type ) {
+                    CloseGamePlayAndLogoutCommand closeCommand = cmd.getExtension( CloseGamePlayAndLogoutCommand.cmd );
                     Player player = uc.associatedPlayer();
                     if ( player != null ) {
                         logout( player, cmd.getSessionId() );
-                        uc.close();
+                        if ( closeCommand.getForceCloseConnection() ) {
+                            throw new DeadConnectionException( uc, "closed as per user request" );
+                        }
+                        else {
+                            CloseGamePlayAndLogoutReply reply = CloseGamePlayAndLogoutReply.newBuilder().build();
+                            uc.writeAsync( toReply( cmd, commandsCodec(), CloseGamePlayAndLogoutReply.cmd, reply ) );
+                        }
                     }
                     processed = PROCESSING_COMPLETE;
                 }
@@ -176,7 +184,7 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
         return initPlayer( userAccount );
     }
     /**
-     * attempt to re-login (re-attach) user to existing session if possible. 
+     * attempt to re-login (re-attach) user to existing session if possible.
      * 
      * @param sessionId - player session id.
      * @return player.
@@ -204,10 +212,11 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
      * @param gameCode - game shortcut.
      * @param player - player instance.
      * @param uc - user connection.
+     * @param b - response builder.
      * 
      * @return player session data.
      */
-    protected PlayerSessionBO openPlayerSession(String gameCode, Player player, UserConnection uc) {
+    protected PlayerSessionBO openPlayerSession(String gameCode, Player player, UserConnection uc, OpenGamePlayReply.Builder b) {
         GameBO gameBO = required( repository.findGame( gameCode ), GameBO.class, gameCode );
         String sessionId = PlayerSessionBO.toSessionId( player, gameBO );
         Optional<PlayerSessionBO> ongoing = repository.findPlayerSession( sessionId );
@@ -215,6 +224,7 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
 
         if ( ongoing.isPresent() ) {
             logger.info( "Attaching game play to existing Player Session = {}", ongoing.get().sessionId );
+            b.setReattached( true );
             return ongoing.get();
         }
         else {
@@ -225,10 +235,18 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
             logger.info( "PlayerSesion has been created = {}", playerSession );
             PlayerSessionBO playerSessionBO = new PlayerSessionBO( playerSession );
             repository.savePlayerSession( playerSessionBO );
+            b.setReattached( false );
+
             return playerSessionBO;
         }
     }
     protected void logout(Player player, String sessionId) {
-        player.closePlayerSession( sessionId );
+        Optional<PlayerSessionBO> ongoing = repository.findPlayerSession( sessionId );
+        if ( ongoing.isPresent() ) {
+            PlayerSessionBO playerSessionBO = ongoing.get();
+            repository.deletePlayerSession( playerSessionBO );
+            player.closePlayerSession( sessionId );
+            logger.info( "PlayerSesion={} has been closed", playerSessionBO.getPrimaryKey() );
+        }
     }
 }

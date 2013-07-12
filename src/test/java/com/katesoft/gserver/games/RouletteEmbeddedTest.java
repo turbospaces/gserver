@@ -1,5 +1,6 @@
 package com.katesoft.gserver.games;
 
+import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertSame;
 
@@ -24,7 +25,8 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
     public void works() throws InterruptedException, ExecutionException {
         login();
         OpenGamePlayReply openGamePlay = openGamePlay( RouletteGame.class );
-        openGamePlay(RouletteGame.class);
+        openGamePlay( RouletteGame.class );
+        assertEquals( 1, repo.findUserPlayerSessions( username ).size() );
 
         RouletteBetPosition position = RouletteBetPosition.values()[RouletteBetPosition.values().length - 4];
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();
@@ -37,5 +39,8 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
         assertSame( position, reply.getPosition() );
         assertNotNull( reply.getBetResult() );
         logger.trace( reply.toString() );
+
+        logout( openGamePlay.getSessionId() );
+        assertEquals( 0, repo.findUserPlayerSessions( username ).size() );
     }
 }

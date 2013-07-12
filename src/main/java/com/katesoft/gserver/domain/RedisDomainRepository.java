@@ -20,20 +20,21 @@ import com.katesoft.gserver.domain.Entities.BetLimits;
 import com.katesoft.gserver.domain.Entities.Coins;
 
 public class RedisDomainRepository {
-    private final RedisNamingConvention accountNamingConvention, gameNamingConvention, playerSessionConvention;
+    private static final String USER_NAMESPACE = "user";
+    private final RedisNamingConvention userAccountConvention, gameConvention, playerSessionConvention;
     private final DefaultRedisList<String> userAccounts, games;
 
     public RedisDomainRepository(StringRedisTemplate template) {
-        accountNamingConvention = new RedisNamingConvention( template, UserAccountBO.class );
-        gameNamingConvention = new RedisNamingConvention( template, GameBO.class );
+        userAccountConvention = new RedisNamingConvention( template, UserAccountBO.class );
+        gameConvention = new RedisNamingConvention( template, GameBO.class );
         playerSessionConvention = new RedisNamingConvention( template, PlayerSessionBO.class );
 
-        userAccounts = accountNamingConvention.newEntitiesList();
-        games = gameNamingConvention.newEntitiesList();
+        userAccounts = userAccountConvention.newEntitiesList();
+        games = gameConvention.newEntitiesList();
     }
 
     public void saveGame(final GameBO game) throws ConcurrencyFailureException, DuplicateKeyException {
-        Long id = gameNamingConvention.save( game.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
+        Long id = gameConvention.save( game.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
             @Override
             public Void apply(BoundHashOperations<String, String, String> ops) {
                 ops.put( "shortcut", game.getPrimaryKey() );
@@ -45,7 +46,7 @@ public class RedisDomainRepository {
         games.add( id.toString() );
     }
     public void saveUserAccount(final UserAccountBO account) throws ConcurrencyFailureException, DuplicateKeyException {
-        Long id = accountNamingConvention.save( account.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
+        Long id = userAccountConvention.save( account.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
             @Override
             public Void apply(BoundHashOperations<String, String, String> ops) {
                 ops.put( "provider", account.getProvider() );
@@ -64,7 +65,7 @@ public class RedisDomainRepository {
         userAccounts.add( id.toString() );
     }
     public void savePlayerSession(final PlayerSessionBO playerSession) {
-        playerSessionConvention.save( playerSession.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
+        Long id = playerSessionConvention.save( playerSession.getPrimaryKey(), new Function<BoundHashOperations<String, String, String>, Void>() {
             @Override
             public Void apply(BoundHashOperations<String, String, String> ops) {
                 ops.put( "session_id", playerSession.sessionId );
@@ -76,50 +77,42 @@ public class RedisDomainRepository {
                 return null;
             }
         } );
+        playerSessionConvention.newList( playerSession.userId, USER_NAMESPACE ).add( id.toString() );
     }
     public Optional<PlayerSessionBO> findPlayerSession(String pk) {
-        return playerSessionConvention.findByPrimaryKey( pk, new Function<BoundHashOperations<String, String, String>, PlayerSessionBO>() {
-            @Override
-            public PlayerSessionBO apply(BoundHashOperations<String, String, String> ops) {
-                for ( ;; ) {
-                    try {
-                        String sessionId = ops.get( "session_id" );
-                        String connectionId = ops.get( "user_connection_id" );
-                        String userId = ops.get( "user_id" );
-                        GameBO game = findGame( ops.get( "game_id" ) ).get();
-
-                        BetLimits.Builder betLimits = BetLimits.newBuilder();
-                        Coins.Builder coins = Coins.newBuilder();
-
-                        JsonFormat.merge( ops.get( "bet_limits" ), betLimits );
-                        JsonFormat.merge( ops.get( "coins" ), coins );
-
-                        return new PlayerSessionBO( sessionId, userId, connectionId, betLimits.build(), coins.build(), game );
-                    }
-                    catch ( ParseException e ) {
-                        Throwables.propagate( e );
-                    }
-                }
-            }
-        } );
+        return playerSessionConvention.findByPrimaryKey( pk, PLAYER_SESSION_MAPPER );
     }
     public Optional<GameBO> findGame(String pk) {
-        return gameNamingConvention.findByPrimaryKey( pk, GAME_MAPPER );
+        return gameConvention.findByPrimaryKey( pk, GAME_MAPPER );
     }
     public Optional<UserAccountBO> findUserAccount(final String pk) {
-        return accountNamingConvention.findByPrimaryKey( pk, USER_ACCOUNT_MAPPER );
+        return userAccountConvention.findByPrimaryKey( pk, USER_ACCOUNT_MAPPER );
+    }
+    public ImmutableSet<PlayerSessionBO> findUserPlayerSessions(String userId) {
+        Builder<PlayerSessionBO> b = ImmutableSet.builder();
+        DefaultRedisList<String> userPlayerSessions = playerSessionConvention.newList( userId, USER_NAMESPACE );
+        for ( Iterator<String> it = userPlayerSessions.iterator(); it.hasNext(); ) {
+            Long generatedId = Long.parseLong( it.next() );
+            b.add( playerSessionConvention.findByGeneratedId( generatedId, PLAYER_SESSION_MAPPER ) );
+        }
+        return b.build();
     }
     public ImmutableSet<GameBO> findAllGames() {
         Builder<GameBO> b = ImmutableSet.builder();
         for ( Iterator<String> it = games.iterator(); it.hasNext(); ) {
             Long generatedId = Long.parseLong( it.next() );
-            b.add( gameNamingConvention.findByGeneratedId( generatedId, GAME_MAPPER ) );
+            b.add( gameConvention.findByGeneratedId( generatedId, GAME_MAPPER ) );
         }
         return b.build();
     }
     public void deleteUserAccount(final UserAccountBO account) {
-        Long generatedId = accountNamingConvention.deleteByPrimaryKey( account.getPrimaryKey() );
+        Long generatedId = userAccountConvention.deleteByPrimaryKey( account.getPrimaryKey() );
         userAccounts.remove( generatedId.toString() );
+    }
+    public void deletePlayerSession(final PlayerSessionBO playerSession) {
+        DefaultRedisList<String> list = playerSessionConvention.newList( playerSession.userId, USER_NAMESPACE );
+        Long generatedId = playerSessionConvention.deleteByPrimaryKey( playerSession.getPrimaryKey() );
+        list.remove( generatedId.toString() );
     }
     public static <T extends BO> T required(Optional<T> opt, Class<T> bo, Object pk) throws EmptyResultDataAccessException {
         if ( opt.isPresent() ) {
@@ -132,13 +125,13 @@ public class RedisDomainRepository {
     //
     // MAPPER(s)
     //
-    private static final Function<BoundHashOperations<String, String, String>, GameBO> GAME_MAPPER = new Function<BoundHashOperations<String, String, String>, GameBO>() {
+    private final Function<BoundHashOperations<String, String, String>, GameBO> GAME_MAPPER = new Function<BoundHashOperations<String, String, String>, GameBO>() {
         @Override
         public GameBO apply(BoundHashOperations<String, String, String> ops) {
             return new GameBO( ops.get( "shortcut" ), ops.get( "display_name" ), ops.get( "game_class_name" ) );
         }
     };
-    private static final Function<BoundHashOperations<String, String, String>, UserAccountBO> USER_ACCOUNT_MAPPER = new Function<BoundHashOperations<String, String, String>, UserAccountBO>() {
+    private final Function<BoundHashOperations<String, String, String>, UserAccountBO> USER_ACCOUNT_MAPPER = new Function<BoundHashOperations<String, String, String>, UserAccountBO>() {
         @Override
         public UserAccountBO apply(BoundHashOperations<String, String, String> userOps) {
             UserAccountBO account = new UserAccountBO();
@@ -151,6 +144,30 @@ public class RedisDomainRepository {
             account.setPassword( userOps.get( "password" ) );
             account.setEnabled( Boolean.parseBoolean( userOps.get( "enabled" ) ) );
             return account;
+        }
+    };
+    private final Function<BoundHashOperations<String, String, String>, PlayerSessionBO> PLAYER_SESSION_MAPPER = new Function<BoundHashOperations<String, String, String>, PlayerSessionBO>() {
+        @Override
+        public PlayerSessionBO apply(BoundHashOperations<String, String, String> ops) {
+            for ( ;; ) {
+                try {
+                    String sessionId = ops.get( "session_id" );
+                    String connectionId = ops.get( "user_connection_id" );
+                    String userId = ops.get( "user_id" );
+                    GameBO game = findGame( ops.get( "game_id" ) ).get();
+
+                    BetLimits.Builder betLimits = BetLimits.newBuilder();
+                    Coins.Builder coins = Coins.newBuilder();
+
+                    JsonFormat.merge( ops.get( "bet_limits" ), betLimits );
+                    JsonFormat.merge( ops.get( "coins" ), coins );
+
+                    return new PlayerSessionBO( sessionId, userId, connectionId, betLimits.build(), coins.build(), game );
+                }
+                catch ( ParseException e ) {
+                    Throwables.propagate( e );
+                }
+            }
         }
     };
 }

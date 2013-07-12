@@ -84,6 +84,15 @@ message CloseGamePlayAndLogoutCommand {
 	extend BaseCommand {
 		required CloseGamePlayAndLogoutCommand cmd = 104;
 	}
+	required bool forceCloseConnection = 1 [default = true];
+}
+//
+// reply to close play if the user doesn't force to close connection.
+//
+message CloseGamePlayAndLogoutReply {
+	extend BaseCommand {
+		required CloseGamePlayAndLogoutReply cmd = 105;
+	}
 }
 //
 // update common game play settings:
@@ -94,7 +103,7 @@ message CloseGamePlayAndLogoutCommand {
 //
 message UpdatePlayerSettingsCommand {
 	extend BaseCommand {
-		required UpdatePlayerSettingsCommand cmd = 105;
+		required UpdatePlayerSettingsCommand cmd = 106;
 	}
 	required PlayerSettings settings = 1;
 }
@@ -119,4 +128,5 @@ message OpenGamePlayReply {
 	required string sessionId = 1;
 	required BetLimits betLimits = 2;
 	required Coins coins = 3;
+	required bool reattached = 4 [default = false];
 }
