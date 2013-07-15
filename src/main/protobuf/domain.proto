@@ -76,4 +76,10 @@ message ServerSettings {
 	required int32 websocketLoginTokenExpiration = 1 [default = 108000];
 	// password to use in order to encrypt generated websockets login token.
 	required string websocketLoginEncryptorPassword = 2 [default = 'wsLoginTokenEncryptor'];
+	// which host and port to use for direct TCP persistent connections.
+	optional string tcpHostAndPort = 3 [default = '0.0.0.0:8190' ];
+	// which host and port to use for websocket persistent connections.
+	optional string websocketsHostAndPort = 4 [default = '0.0.0.0:8191'];
+	// which host and port to use for flash persistent connections.
+	optional string flashHostAndPort = 5 [default = '0.0.0.0:8192'];
 }

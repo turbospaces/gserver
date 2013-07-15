@@ -118,6 +118,15 @@ message Geti18nMessagesCommand {
 	repeated string keys = 2;
 }
 //
+// reply to the geti18n properties command.
+//
+message Geti18nMessagesReply {
+	extend BaseCommand {
+		required Geti18nMessagesReply cmd = 108;
+	}
+	repeated gserver.i18n values = 1;
+}
+//
 // open game play for specific game.
 // the command itself is idempotent, you will be attached to existing player session instance if it's ongoing.
 //

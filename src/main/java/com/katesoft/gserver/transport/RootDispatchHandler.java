@@ -4,7 +4,8 @@ import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -37,16 +38,17 @@ import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.core.Encryptors;
 
 @Sharable
-class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> implements Closeable, Supplier<ChannelGroup> {
+class RootDispatchHandler extends SimpleChannelInboundHandler<Object> implements Closeable, Supplier<ChannelGroup> {
     private static final Logger LOGGER = LoggerFactory.getLogger( RootDispatchHandler.class );
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
     private static AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
 
-    private final ChannelGroup connections = new DefaultChannelGroup();
+    private final ChannelGroup connections;
     private final TransportMessageListener eventBus;
 
-    RootDispatchHandler(TransportMessageListener ml) {
+    RootDispatchHandler(TransportMessageListener ml, EventLoopGroup eventGroup) {
         this.eventBus = ml;
+        this.connections = new DefaultChannelGroup( eventGroup.next() );
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -68,7 +70,7 @@ class RootDispatchHandler extends ChannelInboundMessageHandlerAdapter<Object> im
         LOGGER.info( "channel={} close for UserConnection=({}). active connections left={}", ctx.channel(), c.id(), get().size() );
     }
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
+    protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
         SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
         if ( msg instanceof BaseCommand ) {
             userConnection.setConnectionType( ConnectionType.TCP );

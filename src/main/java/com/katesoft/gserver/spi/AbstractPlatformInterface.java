@@ -5,6 +5,8 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.katesoft.gserver.core.Commands.toReply;
 import static com.katesoft.gserver.domain.RedisDomainRepository.required;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.chain.Chain;
@@ -14,7 +16,9 @@ import org.apache.commons.chain.impl.ChainBase;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
 import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
+import org.springframework.util.StringUtils;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
@@ -29,6 +33,8 @@ import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutCommand;
 import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutReply;
+import com.katesoft.gserver.commands.Commands.Geti18nMessagesCommand;
+import com.katesoft.gserver.commands.Commands.Geti18nMessagesReply;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.LoginCommnadException;
 import com.katesoft.gserver.commands.Commands.LoginCommnadException.Builder;
@@ -42,6 +48,7 @@ import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.domain.Entities.BetLimits;
 import com.katesoft.gserver.domain.Entities.Coin;
 import com.katesoft.gserver.domain.Entities.Coins;
+import com.katesoft.gserver.domain.Entities.i18n;
 import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.domain.PlayerSessionBO;
 import com.katesoft.gserver.domain.RedisDomainRepository;
@@ -144,6 +151,16 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
                     }
                     processed = PROCESSING_COMPLETE;
                 }
+                else if ( Geti18nMessagesCommand.class == type ) {
+                    Geti18nMessagesCommand i18nCommand = cmd.getExtension( Geti18nMessagesCommand.cmd );
+                    List<String> keysList = i18nCommand.getKeysList();
+                    String locale = i18nCommand.getLocale();
+                    ImmutableSet<i18n> messages = geti18nMessages( keysList, locale );
+
+                    Geti18nMessagesReply reply = Geti18nMessagesReply.newBuilder().addAllValues( messages ).build();
+                    uc.writeAsync( toReply( cmd, commandsCodec(), Geti18nMessagesReply.cmd, reply ) );
+                    processed = PROCESSING_COMPLETE;
+                }
                 else if ( UpdatePlayerSettingsCommand.class == type ) {
                     cmd.getExtension( UpdatePlayerSettingsCommand.cmd );
                     uc.associatedPlayer();
@@ -181,6 +198,7 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
         checkState( rememberMeToken.getTokenValue().equals( tokenValue ) );
         String username = rememberMeToken.getUsername();
         UserAccountBO userAccount = (UserAccountBO) userDetailsService.loadUserByUsername( username );
+
         return initPlayer( userAccount );
     }
     /**
@@ -248,5 +266,14 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
             player.closePlayerSession( sessionId );
             logger.info( "PlayerSesion={} has been closed", playerSessionBO.getPrimaryKey() );
         }
+    }
+    protected ImmutableSet<i18n> geti18nMessages(List<String> keysList, String locale) {
+        MessageSource messageSource = ctx.messageSource();
+        Locale l = StringUtils.parseLocaleString( locale );
+        ImmutableSet.Builder<i18n> b = ImmutableSet.builder();
+        for ( String key : keysList ) {
+            b.add( i18n.newBuilder().setKey( key ).setValue( messageSource.getMessage( key, null, l ) ).build() );
+        }
+        return b.build();
     }
 }

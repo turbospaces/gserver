@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
-import java.lang.reflect.Field;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -41,22 +40,10 @@ import com.sun.jna.Platform;
  */
 public abstract class Misc {
     private static final Logger LOGGER = LoggerFactory.getLogger( Misc.class );
-    private static final sun.misc.Unsafe UNSAFE;
     private static final Range<Integer> FREE_PORT_SCAN_RANGE = Range.closed( 1 << 10, 1 << 14 );
 
     public static final String OS_USER = System.getProperty( "user.name" );
     public static final Random RANDOM = new SecureRandom();
-
-    static {
-        try {
-            Field f = sun.misc.Unsafe.class.getDeclaredField( "theUnsafe" );
-            f.setAccessible( true );
-            UNSAFE = (sun.misc.Unsafe) f.get( null );
-        }
-        catch ( Exception e ) {
-            throw new Error( e );
-        }
-    }
 
     public static boolean isLinux() {
         return Platform.isLinux();
@@ -88,63 +75,6 @@ public abstract class Misc {
                         + " Increase RLIMIT_MEMLOCK or run process as root." );
             }
         }
-    }
-    @SuppressWarnings("unchecked")
-    public static <T> T getFieldValue(final Object source, final Class<T> valueType, final long fieldOffset) {
-        Object value = null;
-
-        if ( valueType.isPrimitive() ) {
-            if ( valueType == int.class )
-                value = UNSAFE.getInt( source, fieldOffset );
-            if ( valueType == short.class )
-                value = UNSAFE.getShort( source, fieldOffset );
-            else if ( valueType == long.class )
-                value = UNSAFE.getLong( source, fieldOffset );
-            else if ( valueType == float.class )
-                value = UNSAFE.getFloat( source, fieldOffset );
-            else if ( valueType == double.class )
-                value = UNSAFE.getDouble( source, fieldOffset );
-            else if ( valueType == char.class )
-                value = UNSAFE.getChar( source, fieldOffset );
-            else if ( valueType == byte.class )
-                value = UNSAFE.getByte( source, fieldOffset );
-            else if ( valueType == boolean.class )
-                value = UNSAFE.getBoolean( source, fieldOffset );
-        }
-        else
-            value = UNSAFE.getObject( source, fieldOffset );
-        return (T) value;
-    }
-    /**
-     * get the field offset for sub-sequence dirty access.
-     * 
-     * @param f - the field.
-     * @return long value offset
-     */
-    public static long getFieldOffset(Field f) {
-        return UNSAFE.objectFieldOffset( f );
-    }
-    public static <T> void setFieldValueUnsafe(final Object source, final T value, final Class<T> valueType, final long fieldOffset) {
-        if ( valueType.isPrimitive() ) {
-            if ( valueType == int.class )
-                UNSAFE.putInt( source, fieldOffset, ( (Integer) value ).intValue() );
-            if ( valueType == short.class )
-                UNSAFE.putShort( source, fieldOffset, ( (Short) value ).shortValue() );
-            else if ( valueType == long.class )
-                UNSAFE.putLong( source, fieldOffset, ( (Long) value ).longValue() );
-            else if ( valueType == float.class )
-                UNSAFE.putFloat( source, fieldOffset, ( (Float) value ).floatValue() );
-            else if ( valueType == double.class )
-                UNSAFE.putDouble( source, fieldOffset, ( (Double) value ).doubleValue() );
-            else if ( valueType == char.class )
-                UNSAFE.putChar( source, fieldOffset, ( (Character) value ).charValue() );
-            else if ( valueType == byte.class )
-                UNSAFE.putByte( source, fieldOffset, ( (Byte) value ).byteValue() );
-            else if ( valueType == boolean.class )
-                UNSAFE.putBoolean( source, fieldOffset, ( (Boolean) value ).booleanValue() );
-        }
-        else
-            UNSAFE.putObject( source, fieldOffset, value );
     }
     public static int nextAvailablePort() {
         int port = FREE_PORT_SCAN_RANGE.lowerEndpoint()

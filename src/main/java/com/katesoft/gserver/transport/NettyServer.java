@@ -33,7 +33,7 @@ import com.katesoft.gserver.misc.Misc;
 public class NettyServer implements TransportServer<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
-    private final EventLoopGroup eventGroup = new NioEventLoopGroup();
+    private final EventLoopGroup eventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() );
     private TransportMessageListener listener;
     private RootDispatchHandler root;
     private TransportServerSettings settings;
@@ -42,8 +42,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
     public void startServer(final TransportServer.TransportServerSettings s, final TransportMessageListener l) {
         this.settings = s;
         this.listener = l;
-
-        root = new RootDispatchHandler( l );
+        root = new RootDispatchHandler( l, eventGroup );
 
         final ServerBootstrap tcpBootstrap = new ServerBootstrap();
         tcpBootstrap

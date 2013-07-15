@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.context.MessageSource;
-
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
@@ -39,12 +37,8 @@ public class RouletteGame extends AbstractGame {
                 e.interpretIfPossible( GetRoulettePositionInfoCommand.class, new Runnable() {
                     @Override
                     public void run() {
-                        GetRoulettePositionInfoCommand cmd = e.getCmd().getExtension( GetRoulettePositionInfoCommand.cmd );
-
+                        e.getCmd().getExtension( GetRoulettePositionInfoCommand.cmd );
                         Builder replyBuilder = GetRoulettePositionInfoReply.newBuilder();
-                        MessageSource messageSource = gamePlayContext.messageSource();
-                        // Locale locale = StringUtils.parseLocaleString( cmd.getLocale() );
-
                         for ( PositionAndPayout pp : ALL.values() ) {
                             replyBuilder.addPositions( RoulettePositionInfo
                                     .newBuilder()

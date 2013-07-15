@@ -5,6 +5,7 @@ import static com.google.common.net.HostAndPort.fromParts;
 import static com.katesoft.gserver.misc.Misc.shutdownExecutor;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
+import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,6 +37,8 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutCommand;
 import com.katesoft.gserver.commands.Commands.CloseGamePlayAndLogoutReply;
+import com.katesoft.gserver.commands.Commands.Geti18nMessagesCommand;
+import com.katesoft.gserver.commands.Commands.Geti18nMessagesReply;
 import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
@@ -53,7 +56,6 @@ import com.katesoft.gserver.spi.AbstractPlatformInterface;
 import com.katesoft.gserver.transport.ConnectionType;
 import com.katesoft.gserver.transport.NettyServer;
 import com.katesoft.gserver.transport.NettyTcpClient;
-import com.katesoft.gserver.transport.ProxyServer;
 
 public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     public static final ScheduledExecutorService SCHEDULED_EXEC = newSingleThreadScheduledExecutor();
@@ -71,7 +73,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     }
 
     @Before
-    public void setup() throws Exception {
+    public void setup() {
         if ( s == null ) {
             MessageDispatcher mld = messageListener();
             TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
@@ -81,17 +83,9 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
 
             HostAndPort x = ( connectionType == ConnectionType.TCP ? settings.tcp : settings.websockets.get() );
 
-            ProxyServer proxy = setupProxy( s, x );
-
-            if ( proxy != null ) {
-                x = proxy.getProxyAddress();
-            }
-
             c = new NettyTcpClient( x, mld.getPlatformInterface().commandsCodec(), connectionType );
             c.run();
-            if ( proxy == null ) {
-                uc = s.awaitForClientHandshake( c.get() );
-            }
+            uc = s.awaitForClientHandshake( c.get() );
         }
     }
     @AfterClass
@@ -108,10 +102,6 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         finally {
             AbstractDomainTest.afterClass();
         }
-    }
-    @SuppressWarnings("unused")
-    protected ProxyServer setupProxy(NettyServer ns, HostAndPort actualPort) throws Exception {
-        return null;
     }
     @SuppressWarnings({ "unchecked" })
     public static <T> GameCommand mockCommandEvent(GeneratedExtension<BaseCommand, T> ext, T t, PlayerSession ps, ProtoCommandsCodec codec) {
@@ -137,6 +127,11 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         CloseGamePlayAndLogoutCommand cmd = CloseGamePlayAndLogoutCommand.newBuilder().setForceCloseConnection( false ).build();
         BaseCommand bcmd = c.callAsync( CloseGamePlayAndLogoutCommand.cmd, cmd, sessionId, true ).get();
         return bcmd.getExtension( CloseGamePlayAndLogoutReply.cmd );
+    }
+    protected Geti18nMessagesReply geti18nMessages(Collection<String> keys) throws InterruptedException, ExecutionException {
+        Geti18nMessagesCommand cmd = Geti18nMessagesCommand.newBuilder().setLocale( "ru" ).addAllKeys( keys ).build();
+        BaseCommand bcmd = c.callAsync( Geti18nMessagesCommand.cmd, cmd, null, false ).get();
+        return bcmd.getExtension( Geti18nMessagesReply.cmd );
     }
     protected OpenGamePlayReply openGamePlay(final Class<? extends Game> game) throws InterruptedException, ExecutionException {
         ImmutableSet<GameBO> allGames = repo.findAllGames();
