@@ -108,6 +108,16 @@ message UpdatePlayerSettingsCommand {
 	required PlayerSettings settings = 1;
 }
 //
+// get i18n messages by keys for specific locale.
+//
+message Geti18nMessagesCommand {
+	extend BaseCommand {
+		required Geti18nMessagesCommand cmd = 107;
+	}
+	required string locale = 1;
+	repeated string keys = 2;
+}
+//
 // open game play for specific game.
 // the command itself is idempotent, you will be attached to existing player session instance if it's ongoing.
 //

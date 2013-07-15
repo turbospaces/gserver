@@ -7,6 +7,8 @@ import java.util.Random;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.context.MessageSource;
+
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
 import com.katesoft.gserver.api.BetWrapper;
@@ -36,6 +38,10 @@ public abstract class AbstractGame implements Game {
             @Override
             public void creditWin(BetWrapper bet) {
                 ctx.creditWin( bet );
+            }
+            @Override
+            public MessageSource messageSource() {
+                return ctx.messageSource();
             }
             @Override
             public ScheduledFuture<?> schedule(Runnable r, long period, TimeUnit timeUnit) {

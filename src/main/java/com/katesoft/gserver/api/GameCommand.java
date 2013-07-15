@@ -18,7 +18,7 @@ public final class GameCommand {
         this.playerSession = playerSession;
     }
     public void interpretIfPossible(Class<? extends GeneratedMessage> clazz, Runnable r) throws Exception {
-        if ( cmdClass() == clazz ) {
+        if ( cmdClass().equals( clazz ) ) {
             try {
                 r.run();
             }

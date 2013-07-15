@@ -10,6 +10,8 @@ import org.junit.Test;
 
 import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoCommand;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoReply;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinReply;
@@ -27,6 +29,16 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
         OpenGamePlayReply openGamePlay = openGamePlay( RouletteGame.class );
         openGamePlay( RouletteGame.class );
         assertEquals( 1, repo.findUserPlayerSessions( username ).size() );
+
+        GetRoulettePositionInfoReply infoReply = c
+                .callAsync(
+                        GetRoulettePositionInfoCommand.cmd,
+                        GetRoulettePositionInfoCommand.newBuilder().build(),
+                        openGamePlay.getSessionId(),
+                        true )
+                .get()
+                .getExtension( GetRoulettePositionInfoReply.cmd );
+        System.out.println( infoReply.toString() );
 
         RouletteBetPosition position = RouletteBetPosition.values()[RouletteBetPosition.values().length - 4];
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();

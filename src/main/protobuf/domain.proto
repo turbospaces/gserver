@@ -4,6 +4,11 @@ option optimize_for = SPEED;
 option java_package = "com.katesoft.gserver.domain";
 option java_outer_classname = "Entities";
 
+message i18n {
+	required string key = 1;
+	required string value = 2;
+}
+
 //
 // define most commonly used coins
 //

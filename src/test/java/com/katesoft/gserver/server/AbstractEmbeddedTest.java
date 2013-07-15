@@ -15,6 +15,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
@@ -153,8 +154,12 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         return reply;
     }
     public static MessageDispatcher messageListener() {
+        ReloadableResourceBundleMessageSource ms = new ReloadableResourceBundleMessageSource();
+        ms.setBasename( "classpath:messages" );
+        ms.setDefaultEncoding( "UTF-8" );
+
         ProtoCommandsCodec codec = new CommandsQualifierCodec.ProtoCommandsCodec( EXTENSION_REGISTRY );
-        AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM ) {};
+        AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM, ms ) {};
 
         repo.saveGame( new GameBO( "amrl", "American Roulette", RouletteGame.class.getName() ) );
         // repo.saveGame( new GameBO( "eurl", "Europeane Roulette", RouletteGame.class.getName() ) );

@@ -211,3 +211,22 @@ message RouletteSpinReply {
 	required gserver.BetResult betResult = 1;
 	required RouletteBetPosition position = 2;
 }
+
+message GetRoulettePositionInfoCommand {
+	extend gserver.BaseCommand {
+		required GetRoulettePositionInfoCommand cmd = 202;
+	}
+}
+
+message GetRoulettePositionInfoReply {
+	extend gserver.BaseCommand {
+		required GetRoulettePositionInfoReply cmd = 203;
+	}
+	repeated RoulettePositionInfo positions = 1;
+}
+
+message RoulettePositionInfo {
+	required string name = 1;
+	required int32 payout = 2;
+	repeated int32 numbers = 3;
+}

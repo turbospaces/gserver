@@ -9,11 +9,14 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.support.StaticMessageSource;
 
 import com.katesoft.gserver.misc.Misc;
 
 public interface GamePlayContext {
     Random rng();
+    MessageSource messageSource();
     void creditWin(BetWrapper bet);
     ScheduledFuture<?> schedule(Runnable r, long period, TimeUnit timeUnit);
 
@@ -27,14 +30,20 @@ public interface GamePlayContext {
 
         private final Random rng;
         private final ScheduledExecutorService scheduledExec;
+        private final MessageSource messageSource;
 
-        public AbstractGamePlayContext(ScheduledExecutorService exec, Random rng) {
+        public AbstractGamePlayContext(ScheduledExecutorService exec, Random rng, MessageSource messageSource) {
             this.scheduledExec = exec;
             this.rng = rng;
+            this.messageSource = messageSource;
         }
         @Override
         public Random rng() {
             return rng;
+        }
+        @Override
+        public MessageSource messageSource() {
+            return messageSource;
         }
         @Override
         public ScheduledFuture<?> schedule(final Runnable r, final long period, final TimeUnit timeUnit) {
@@ -66,7 +75,7 @@ public interface GamePlayContext {
         private final AtomicLong loseAmount = new AtomicLong();
 
         public RTP(ScheduledExecutorService scheduledExec) {
-            super( scheduledExec, Misc.RANDOM );
+            super( scheduledExec, Misc.RANDOM, new StaticMessageSource() );
         }
         @Override
         public void creditWin(BetWrapper bet) {

@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.context.MessageSource;
+
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
@@ -18,29 +20,53 @@ import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.GameCommandInterpreter;
 import com.katesoft.gserver.core.AbstractGame;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoCommand;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoReply;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoReply.Builder;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
+import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulettePositionInfo;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinReply;
 
 public class RouletteGame extends AbstractGame {
-    static final Map<RouletteBetPosition, PositionAndPayout> ALL = Maps.newHashMap();
+    static final Map<RouletteBetPosition, PositionAndPayout> ALL = Maps.newLinkedHashMap();
     static final Map<Integer, Set<PositionAndPayout>> NUMS = Maps.newHashMap();
 
     public RouletteGame() {
         interpreter = new GameCommandInterpreter() {
             @Override
             public void interpretCommand(final GameCommand e) throws Exception {
+                e.interpretIfPossible( GetRoulettePositionInfoCommand.class, new Runnable() {
+                    @Override
+                    public void run() {
+                        GetRoulettePositionInfoCommand cmd = e.getCmd().getExtension( GetRoulettePositionInfoCommand.cmd );
+
+                        Builder replyBuilder = GetRoulettePositionInfoReply.newBuilder();
+                        MessageSource messageSource = gamePlayContext.messageSource();
+                        // Locale locale = StringUtils.parseLocaleString( cmd.getLocale() );
+
+                        for ( PositionAndPayout pp : ALL.values() ) {
+                            replyBuilder.addPositions( RoulettePositionInfo
+                                    .newBuilder()
+                                    .setName( pp.position.name() )
+                                    .setPayout( pp.payout )
+                                    .addAllNumbers( pp.numbers )
+                                    .build() );
+                        }
+                        e.replyAsync( toReply( e, GetRoulettePositionInfoReply.cmd, replyBuilder.build() ) );
+                    }
+                } );
                 e.interpretIfPossible( RouletteSpinCommand.class, new Runnable() {
                     @Override
                     public void run() {
-                        RouletteSpinCommand spin = e.getCmd().getExtension( RouletteSpinCommand.cmd );
+                        RouletteSpinCommand cmd = e.getCmd().getExtension( RouletteSpinCommand.cmd );
 
-                        PositionAndPayout position = ALL.get( spin.getPosition() );
+                        PositionAndPayout position = ALL.get( cmd.getPosition() );
                         int number = gamePlayContext.rng().nextInt( 37 ) - 1;
                         Set<PositionAndPayout> positions = NUMS.get( number );
                         boolean win = positions.contains( position );
 
-                        BetWrapper bet = new BetWrapper( spin.getBet(), win );
+                        BetWrapper bet = new BetWrapper( cmd.getBet(), win );
                         gamePlayContext.creditWin( bet );
                         RouletteSpinReply spinReply = RouletteSpinReply
                                 .newBuilder()
