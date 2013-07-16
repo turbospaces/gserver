@@ -3,11 +3,11 @@ package com.katesoft.gserver.transport;
 import static com.google.common.util.concurrent.Uninterruptibles.awaitUninterruptibly;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -42,7 +42,6 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.GeneratedMessage;
 import com.google.protobuf.GeneratedMessage.GeneratedExtension;
 import com.googlecode.protobuf.format.JsonFormat;
-import com.googlecode.protobuf.format.JsonFormat.ParseException;
 import com.katesoft.gserver.api.TransportClient;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
@@ -81,7 +80,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                         ChannelPipeline p = ch.pipeline();
                         if ( connectionType == ConnectionType.TCP ) {
                             NettyServer.registerProtobufCodecs( p, codec.extensionRegistry() );
-                            p.addLast( new ChannelInboundMessageHandlerAdapter<BaseCommand>() {
+                            p.addLast( new SimpleChannelInboundHandler<BaseCommand>() {
                                 @Override
                                 public void channelActive(ChannelHandlerContext ctx) {
                                     NettyTcpClient.this.channelCtx = ctx;
@@ -90,7 +89,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                                     l.countDown();
                                 }
                                 @Override
-                                public void messageReceived(ChannelHandlerContext ctx, BaseCommand cmd) {
+                                protected void channelRead0(ChannelHandlerContext ctx, BaseCommand cmd) {
                                     SettableFuture<BaseCommand> f = corr.remove( cmd.getHeaders().getCorrelationID() );
                                     if ( f != null ) {
                                         f.set( cmd );
@@ -109,7 +108,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
 
                             p.addLast( "http-codec", new HttpClientCodec() );
                             p.addLast( "aggregator", new HttpObjectAggregator( 8192 ) );
-                            p.addLast( "ws-handler", new ChannelInboundMessageHandlerAdapter<Object>() {
+                            p.addLast( "ws-handler", new SimpleChannelInboundHandler<Object>() {
                                 @Override
                                 public void channelActive(ChannelHandlerContext ctx) {
                                     handshaker.handshake( ctx.channel() );
@@ -118,7 +117,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                                     logger.debug( "NettyTcpClient connected via={}", sch );
                                 }
                                 @Override
-                                public void messageReceived(ChannelHandlerContext ctx, Object msg) throws ParseException {
+                                protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
                                     if ( !handshaker.isHandshakeComplete() ) {
                                         handshaker.finishHandshake( ctx.channel(), (FullHttpResponse) msg );
                                         l.countDown();

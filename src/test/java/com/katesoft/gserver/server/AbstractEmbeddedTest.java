@@ -45,14 +45,14 @@ import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
-import com.katesoft.gserver.core.MessageDispatcher;
 import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.domain.AbstractDomainTest;
 import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.games.RouletteGame;
 import com.katesoft.gserver.games.roullete.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
-import com.katesoft.gserver.spi.AbstractPlatformInterface;
+import com.katesoft.gserver.spi.AbstractPlatformContext;
+import com.katesoft.gserver.spi.PlatformContext;
 import com.katesoft.gserver.transport.ConnectionType;
 import com.katesoft.gserver.transport.NettyServer;
 import com.katesoft.gserver.transport.NettyTcpClient;
@@ -75,15 +75,15 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     @Before
     public void setup() {
         if ( s == null ) {
-            MessageDispatcher mld = messageListener();
+            PlatformContext ctx = platform();
             TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
 
             s = new NettyServer();
-            s.startServer( settings, mld );
+            s.startServer( settings, ctx );
 
             HostAndPort x = ( connectionType == ConnectionType.TCP ? settings.tcp : settings.websockets.get() );
 
-            c = new NettyTcpClient( x, mld.getPlatformInterface().commandsCodec(), connectionType );
+            c = new NettyTcpClient( x, ctx.commandsCodec(), connectionType );
             c.run();
             uc = s.awaitForClientHandshake( c.get() );
         }
@@ -148,7 +148,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         checkNotNull( reply.getSessionId() );
         return reply;
     }
-    public static MessageDispatcher messageListener() {
+    public static PlatformContext platform() {
         ReloadableResourceBundleMessageSource ms = new ReloadableResourceBundleMessageSource();
         ms.setBasename( "classpath:messages" );
         ms.setDefaultEncoding( "UTF-8" );
@@ -157,11 +157,8 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         AbstractGamePlayContext ctx = new GamePlayContext.AbstractGamePlayContext( SCHEDULED_EXEC, Misc.RANDOM, ms ) {};
 
         repo.saveGame( new GameBO( "amrl", "American Roulette", RouletteGame.class.getName() ) );
-        // repo.saveGame( new GameBO( "eurl", "Europeane Roulette", RouletteGame.class.getName() ) );
 
-        AbstractPlatformInterface platform = new AbstractPlatformInterface( ctx, codec, repo, rememberMeServices ) {};
-        MessageDispatcher mld = new MessageDispatcher( platform, EXTENSION_REGISTRY );
-        return mld;
+        return new AbstractPlatformContext( ctx, codec, repo, rememberMeServices ) {};
     }
 
     public static void main(String... args) throws InterruptedException {
@@ -171,10 +168,10 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         settings.tcp = fromParts( "localhost", 8189 );
         settings.websockets = Optional.of( fromParts( "localhost", 8190 ) );
 
-        MessageDispatcher mld = messageListener();
+        PlatformContext ctx = platform();
 
         NettyServer ms = new NettyServer();
-        ms.startServer( settings, mld );
+        ms.startServer( settings, ctx );
         synchronized ( ms ) {
             ms.wait();
         }

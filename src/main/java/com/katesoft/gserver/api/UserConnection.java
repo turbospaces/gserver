@@ -25,7 +25,6 @@ public interface UserConnection extends Closeable {
     Player associatedPlayer();
     Future<Void> writeAsync(BaseCommand message);
     void writeSync(BaseCommand message);
-    Future<Void> writeAllAsync(BaseCommand message);
     ConnectionType connectionType();
     void addConnectionCloseHook(Runnable r);
     /**
@@ -89,10 +88,6 @@ public interface UserConnection extends Closeable {
         @Override
         public void writeSync(BaseCommand message) {
             logger.trace( "writing reply={} sync", message );
-        }
-        @Override
-        public Future<Void> writeAllAsync(BaseCommand message) {
-            throw new UnsupportedOperationException();
         }
         @Override
         public void close() {}

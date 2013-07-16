@@ -57,7 +57,7 @@ import com.katesoft.gserver.domain.support.RedisPersistentTokenBasedRememberMeSe
 import com.katesoft.gserver.domain.support.RedisPersistentTokenRepository;
 import com.katesoft.gserver.domain.support.RedisUserDetailsService;
 
-public abstract class AbstractPlatformInterface implements PlatformInterface {
+public abstract class AbstractPlatformContext implements PlatformContext {
     protected final Logger logger = LoggerFactory.getLogger( getClass() );
 
     private final GamePlayContext ctx;
@@ -70,10 +70,10 @@ public abstract class AbstractPlatformInterface implements PlatformInterface {
     private final RedisDomainRepository repository;
     private final RedisPersistentTokenBasedRememberMeServices rememberMeServices;
 
-    public AbstractPlatformInterface(GamePlayContext ctx,
-                                     CommandsQualifierCodec codec,
-                                     RedisDomainRepository repository,
-                                     RedisPersistentTokenBasedRememberMeServices rememberMeServices) {
+    public AbstractPlatformContext(GamePlayContext ctx,
+                                   CommandsQualifierCodec codec,
+                                   RedisDomainRepository repository,
+                                   RedisPersistentTokenBasedRememberMeServices rememberMeServices) {
         this.ctx = ctx;
         this.codec = codec;
         this.repository = repository;

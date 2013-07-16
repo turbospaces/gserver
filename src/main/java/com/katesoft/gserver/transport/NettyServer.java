@@ -29,20 +29,21 @@ import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands;
 import com.katesoft.gserver.misc.Misc;
+import com.katesoft.gserver.spi.PlatformContext;
 
 public class NettyServer implements TransportServer<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
     private final EventLoopGroup eventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() );
-    private TransportMessageListener listener;
     private RootDispatchHandler root;
     private TransportServerSettings settings;
+    private PlatformContext platform;
 
     @Override
-    public void startServer(final TransportServer.TransportServerSettings s, final TransportMessageListener l) {
+    public void startServer(final TransportServer.TransportServerSettings s, final PlatformContext ctx) {
         this.settings = s;
-        this.listener = l;
-        root = new RootDispatchHandler( l, eventGroup );
+        this.platform = ctx;
+        root = new RootDispatchHandler( eventGroup, ctx );
 
         final ServerBootstrap tcpBootstrap = new ServerBootstrap();
         tcpBootstrap
@@ -53,7 +54,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
                     @Override
                     public void initChannel(SocketChannel ch) {
                         ChannelPipeline p = ch.pipeline();
-                        registerProtobufCodecs( p, l.extentionRegistry() ).addLast( root );
+                        registerProtobufCodecs( p, platform.commandsCodec().extensionRegistry() ).addLast( root );
                     }
                 } );
         tcpBootstrap.bind( settings.tcp.getHostText(), settings.tcp.getPort() ).syncUninterruptibly();
@@ -99,6 +100,9 @@ public class NettyServer implements TransportServer<SocketChannel> {
     public int connectionsCount() {
         return root.get().size();
     }
+    public TransportServerSettings transportSettings() {
+        return settings;
+    }
     @Override
     public UserConnection awaitForClientHandshake(SocketChannel clientChannel) {
         for ( ;; ) {
@@ -110,12 +114,6 @@ public class NettyServer implements TransportServer<SocketChannel> {
             }
             sleepUninterruptibly( 1, MILLISECONDS );
         }
-    }
-    public TransportServerSettings transportSettings() {
-        return settings;
-    }
-    public TransportMessageListener transportMessageListener() {
-        return listener;
     }
     public static ChannelPipeline registerProtobufCodecs(ChannelPipeline p, ExtensionRegistry registry) {
         p.addLast( "frameDecoder", new LengthFieldBasedFrameDecoder( 1048576, 0, 4, 0, 4 ) );

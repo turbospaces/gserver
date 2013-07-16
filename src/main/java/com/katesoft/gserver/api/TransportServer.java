@@ -8,10 +8,10 @@ import java.io.Closeable;
 
 import com.google.common.base.Optional;
 import com.google.common.net.HostAndPort;
-import com.katesoft.gserver.transport.TransportMessageListener;
+import com.katesoft.gserver.spi.PlatformContext;
 
 public interface TransportServer<ChannelType> extends Closeable {
-    void startServer(TransportServerSettings settings, TransportMessageListener ml) throws Exception;
+    void startServer(TransportServerSettings settings, PlatformContext platform) throws Exception;
     UserConnection getUserConnection(String id);
     int connectionsCount();
     UserConnection awaitForClientHandshake(ChannelType channel);
