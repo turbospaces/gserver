@@ -121,16 +121,16 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     }
     protected void login() {
         LoginCommand cmd = LoginCommand.newBuilder().setToken( loginToken ).setClientPlatform( "flash" ).build();
-        c.callAsync( LoginCommand.cmd, cmd, null, true );
+        c.callAsync( LoginCommand.cmd, cmd, null );
     }
     protected CloseGamePlayAndLogoutReply logout(String sessionId) throws InterruptedException, ExecutionException {
         CloseGamePlayAndLogoutCommand cmd = CloseGamePlayAndLogoutCommand.newBuilder().setForceCloseConnection( false ).build();
-        BaseCommand bcmd = c.callAsync( CloseGamePlayAndLogoutCommand.cmd, cmd, sessionId, true ).get();
+        BaseCommand bcmd = c.callAsync( CloseGamePlayAndLogoutCommand.cmd, cmd, sessionId ).get();
         return bcmd.getExtension( CloseGamePlayAndLogoutReply.cmd );
     }
     protected Geti18nMessagesReply geti18nMessages(Collection<String> keys) throws InterruptedException, ExecutionException {
         Geti18nMessagesCommand cmd = Geti18nMessagesCommand.newBuilder().setLocale( "ru" ).addAllKeys( keys ).build();
-        BaseCommand bcmd = c.callAsync( Geti18nMessagesCommand.cmd, cmd, null, false ).get();
+        BaseCommand bcmd = c.callAsync( Geti18nMessagesCommand.cmd, cmd, null ).get();
         return bcmd.getExtension( Geti18nMessagesReply.cmd );
     }
     protected OpenGamePlayReply openGamePlay(final Class<? extends Game> game) throws InterruptedException, ExecutionException {
@@ -143,7 +143,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         } );
 
         OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId( bo.getPrimaryKey() ).build();
-        BaseCommand bcmd = c.callAsync( OpenGamePlayCommand.cmd, cmd, null, true ).get();
+        BaseCommand bcmd = c.callAsync( OpenGamePlayCommand.cmd, cmd, null ).get();
         OpenGamePlayReply reply = bcmd.getExtension( OpenGamePlayReply.cmd );
         checkNotNull( reply.getSessionId() );
         return reply;

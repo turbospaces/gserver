@@ -34,8 +34,7 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
                 .callAsync(
                         GetRoulettePositionInfoCommand.cmd,
                         GetRoulettePositionInfoCommand.newBuilder().build(),
-                        openGamePlay.getSessionId(),
-                        true )
+                        openGamePlay.getSessionId() )
                 .get()
                 .getExtension( GetRoulettePositionInfoReply.cmd );
         System.out.println( infoReply.toString() );
@@ -44,7 +43,7 @@ public class RouletteEmbeddedTest extends AbstractEmbeddedTest {
         RouletteSpinCommand req = RouletteSpinCommand.newBuilder().setBet( BetWrapper.mock() ).setPosition( position ).build();
 
         RouletteSpinReply reply = c
-                .callAsync( RouletteSpinCommand.cmd, req, openGamePlay.getSessionId(), true )
+                .callAsync( RouletteSpinCommand.cmd, req, openGamePlay.getSessionId() )
                 .get()
                 .getExtension( RouletteSpinReply.cmd );
 

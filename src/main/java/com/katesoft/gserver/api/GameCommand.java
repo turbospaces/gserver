@@ -4,7 +4,6 @@ import java.util.concurrent.Future;
 
 import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
-import com.katesoft.gserver.commands.Commands.UnknownCommadException;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.NetworkCommandContext;
 
@@ -50,11 +49,12 @@ public final class GameCommand {
     /**
      * manually acknowledge the reception of the message. In most cases you
      * would not need to call this method at all since it will be called as part
-     * of {@link #replyAsync(BaseCommand)} and {@link #replySync(BaseCommand)}, but it would
-     * be
-     * required to manually acknowledge the reception of message in case when no
+     * of {@link #replyAsync(BaseCommand)} and {@link #replySync(BaseCommand)} </p>
+     * 
+     * <strong>NOTE</strong>:
+     * you are required to manually acknowledge the reception of message in case when no
      * reply expected/required (this is needed for system in order to properly
-     * react for unhandled messages and reply with {@link UnknownCommadException}).
+     * react for unhandled messages and reply with appropriate response to calling part.
      */
     public void acknowledge() {
         this.acknowledged = true;

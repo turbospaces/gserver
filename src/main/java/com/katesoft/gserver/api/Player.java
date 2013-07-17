@@ -30,5 +30,5 @@ public interface Player extends Closeable, Command {
      */
     void closePlayerSession(String sessionId);
     @Override
-    boolean execute(Context context);
+    boolean execute(Context context) throws AbstractProtocolException;
 }

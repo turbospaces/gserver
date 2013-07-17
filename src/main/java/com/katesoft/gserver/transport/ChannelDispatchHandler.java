@@ -1,6 +1,5 @@
 package com.katesoft.gserver.transport;
 
-import static com.katesoft.gserver.core.Commands.toReply;
 import static com.katesoft.gserver.core.Encryptors.encode;
 import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static java.lang.System.currentTimeMillis;
@@ -36,6 +35,7 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.chain.Chain;
 import org.apache.commons.chain.impl.ChainBase;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -46,13 +46,14 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.google.protobuf.Message;
 import com.googlecode.protobuf.format.JsonFormat;
+import com.katesoft.gserver.api.AbstractProtocolException;
 import com.katesoft.gserver.api.DeadConnectionException;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.api.UserConnection.UserConnectionStub;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
-import com.katesoft.gserver.commands.Commands.UnknownCommadException;
 import com.katesoft.gserver.core.Encryptors;
 import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.spi.PlatformContext;
@@ -195,9 +196,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
             lock.lock();
             try {
                 while ( ( poll = uc.inboundCommands.poll() ) != null ) {
-                    if ( cmd.getDebug() ) {
-                        LOGGER.debug( "onMessage(connection={})={}", uc.id(), poll );
-                    }
+                    LOGGER.debug( "onMessage(connection={})={}", uc.id(), poll );
 
                     // ~~~ build chain ~~~
                     NetworkCommandContext ncmd = new NetworkCommandContext( cmd, platformInterface.commandsCodec(), uc );
@@ -211,11 +210,20 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                     // ~~~ catch common exceptions ~~~
                     try {
                         boolean processed = chain.execute( ncmd );
-
                         if ( !processed ) {
-                            UnknownCommadException reply = UnknownCommadException.newBuilder().setReq( ncmd.getCmd() ).build();
-                            uc.writeAsync( toReply( ncmd.getCmd(), ncmd.getCmdCodec(), UnknownCommadException.cmd, reply ) );
+                            throw new AbstractProtocolException.UnknownCommadException( cmd );
                         }
+                    }
+                    catch ( AbstractProtocolException ex ) {
+                        LOGGER.error( String.format( "ProtocolException=UUID[%s], msg=%s", ex.getUuid().toString(), ex.getMessage() ), ex );
+                        uc.writeAsync( com.katesoft.gserver.commands.Commands.Exception
+                                .newBuilder()
+                                .setHeaders( ncmd.getCmd().getHeaders() )
+                                .setMsg( ex.getMessage() )
+                                .setQualifier( ex.getClass().getName() )
+                                .setStacktrace( ExceptionUtils.getStackTrace( ex ) )
+                                .setUuid( ex.getUuid().toString() )
+                                .build() );
                     }
                     catch ( DataRetrievalFailureException ex ) {
                         LOGGER.error( ex.getMessage(), ex );
@@ -262,35 +270,29 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
             return ch;
         }
         @Override
-        public Future<Void> writeAsync(BaseCommand message) {
+        public Future<Void> writeAsync(Message message) {
             Future<Void> f = null;
             switch ( connectionType ) {
                 case TCP: {
-                    if ( message.getDebug() ) {
-                        LOGGER.debug( "sending TCP response={}", message );
-                    }
+                    LOGGER.debug( "sending TCP response={}", message );
                     f = ch.write( message );
                     break;
                 }
                 case WEBSOCKETS: {
                     String json = JsonFormat.printToString( message );
-                    if ( message.getDebug() ) {
-                        LOGGER.debug( "sending ws response={}", json );
-                    }
+                    LOGGER.debug( "sending ws response={}", json );
                     ch.write( new TextWebSocketFrame( json ) );
                     break;
                 }
                 case FLASH:
-                    if ( message.getDebug() ) {
-                        LOGGER.debug( "sending flash response={}", message );
-                    }
+                    LOGGER.debug( "sending flash response={}", message );
                     f = ch.write( message );
                     break;
             }
             return f;
         }
         @Override
-        public void writeSync(BaseCommand message) {
+        public void writeSync(Message message) {
             writeAsync( message ).awaitUninterruptibly();
         }
         @Override

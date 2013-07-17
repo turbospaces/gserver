@@ -23,7 +23,6 @@ public class CommandsResolverTest {
         LoginCommand logCmd = LoginCommand.newBuilder().setToken( "tokenX" ).setClientPlatform( "flash" ).build();
         Builder bcmdb = BaseCommand.newBuilder();
         bcmdb
-                .setDebug( false )
                 .setProtocolVersion( "0.1" )
                 .setHeaders(
                         MessageHeaders

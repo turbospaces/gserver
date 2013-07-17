@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Atomics;
-import com.katesoft.gserver.commands.Commands.BaseCommand;
+import com.google.protobuf.Message;
 import com.katesoft.gserver.transport.ConnectionType;
 
 public interface UserConnection extends Closeable {
@@ -23,8 +23,8 @@ public interface UserConnection extends Closeable {
     InetSocketAddress remoteAddress();
     Player asociatePlayer(Player p);
     Player associatedPlayer();
-    Future<Void> writeAsync(BaseCommand message);
-    void writeSync(BaseCommand message);
+    Future<Void> writeAsync(Message message);
+    void writeSync(Message message);
     ConnectionType connectionType();
     void addConnectionCloseHook(Runnable r);
     /**
@@ -80,13 +80,13 @@ public interface UserConnection extends Closeable {
             closeHooks.add( r );
         }
         @Override
-        public Future<Void> writeAsync(BaseCommand message) {
+        public Future<Void> writeAsync(Message message) {
             logger.trace( "writing reply={} async", message );
             Void v = null;
             return immediateCheckedFuture( v );
         }
         @Override
-        public void writeSync(BaseCommand message) {
+        public void writeSync(Message message) {
             logger.trace( "writing reply={} sync", message );
         }
         @Override

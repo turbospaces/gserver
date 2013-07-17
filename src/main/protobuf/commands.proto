@@ -1,5 +1,4 @@
 import "domain.proto";
-
 package gserver;
 
 option optimize_for = SPEED;
@@ -27,41 +26,25 @@ message BaseCommand {
 	required MessageHeaders headers = 2;
 	required string protocolVersion = 3;
 	optional string sessionId = 4;
-	optional bool debug = 5;
+}
+//
+// Exception defines:
+// 1) headers - transport level attributes.
+// 2) uuid - unique identifier of exception (user can use this in order to submit bug with attached UUID. administrator can grep logs then).
+// 3) qualifier - fully/shortly qualified name of server exception (i.e. 'InsufficientBanalanceException' or 'java.lang.NullPointerException').
+// 4) msg - exception message.
+// 5) stacktrace(optional) - for debug purpose, attach server log details.
+// 6) game(optional) - specify which game could not recognize client command.
+//
+message Exception {
+	required MessageHeaders headers = 1;
+	required string uuid = 2;
+	required string qualifier = 3;
+	required string msg = 4;
+	optional string stacktrace = 5;
+	optional string game = 6;
 }
 
-//
-// server is not aware how to process inbound command (or either game specific command or platform command),
-// possibly due to protocol version collision or any other difficulties.
-//
-message UnknownCommadException {
-	extend BaseCommand {
-		required UnknownCommadException cmd = 100;
-	}
-	required BaseCommand req = 1;
-	optional string game = 2;
-}
-//
-// if the game login fails, server sends this reply to client synchronously and closes connection.
-// if the server in development mode, sends stack trace additionally.
-//
-message LoginCommnadException {
-	extend BaseCommand {
-		required LoginCommnadException cmd = 101;
-	}
-	required string msg = 1;
-	optional string stacktrace = 2;
-}
-//
-// signals that the session is no longer valid of can't be found on server when expected.
-//
-message InvalidSessionUsageException {
-	extend BaseCommand {
-		required InvalidSessionUsageException cmd = 102;
-	}
-	required string msg = 1;
-	optional string stacktrace = 2;
-}
 //
 // login into game play with some token (for web applications it's may be cookie), but it's rather abstract.
 // client needs to specify the target platform and optionally preferred game display language.
@@ -70,7 +53,7 @@ message InvalidSessionUsageException {
 //
 message LoginCommand {
 	extend BaseCommand {
-		required LoginCommand cmd = 103;
+		required LoginCommand cmd = 100;
 	}
 	required string token = 1;
 	required string clientPlatform = 3;
@@ -81,7 +64,7 @@ message LoginCommand {
 //
 message ReloginCommand {
 	extend BaseCommand {
-		required ReloginCommand cmd = 104;
+		required ReloginCommand cmd = 101;
 	}
 	required string token = 1;
 }
@@ -92,7 +75,7 @@ message ReloginCommand {
 //
 message CloseGamePlayAndLogoutCommand {
 	extend BaseCommand {
-		required CloseGamePlayAndLogoutCommand cmd = 105;
+		required CloseGamePlayAndLogoutCommand cmd = 102;
 	}
 	required bool forceCloseConnection = 1 [default = true];
 }
@@ -101,7 +84,7 @@ message CloseGamePlayAndLogoutCommand {
 //
 message CloseGamePlayAndLogoutReply {
 	extend BaseCommand {
-		required CloseGamePlayAndLogoutReply cmd = 106;
+		required CloseGamePlayAndLogoutReply cmd = 103;
 	}
 }
 //
@@ -113,7 +96,7 @@ message CloseGamePlayAndLogoutReply {
 //
 message UpdatePlayerSettingsCommand {
 	extend BaseCommand {
-		required UpdatePlayerSettingsCommand cmd = 107;
+		required UpdatePlayerSettingsCommand cmd = 104;
 	}
 	required PlayerSettings settings = 1;
 }
@@ -122,7 +105,7 @@ message UpdatePlayerSettingsCommand {
 //
 message Geti18nMessagesCommand {
 	extend BaseCommand {
-		required Geti18nMessagesCommand cmd = 108;
+		required Geti18nMessagesCommand cmd = 105;
 	}
 	required string locale = 1;
 	repeated string keys = 2;
@@ -132,7 +115,7 @@ message Geti18nMessagesCommand {
 //
 message Geti18nMessagesReply {
 	extend BaseCommand {
-		required Geti18nMessagesReply cmd = 109;
+		required Geti18nMessagesReply cmd = 106;
 	}
 	repeated gserver.i18n values = 1;
 }

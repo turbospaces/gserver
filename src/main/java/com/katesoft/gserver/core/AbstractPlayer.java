@@ -2,7 +2,6 @@ package com.katesoft.gserver.core;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.tryFind;
-import static com.katesoft.gserver.core.Commands.toReply;
 import static java.lang.String.format;
 
 import java.util.Map;
@@ -15,12 +14,13 @@ import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
+import com.katesoft.gserver.api.AbstractProtocolException;
+import com.katesoft.gserver.api.AbstractProtocolException.InvalidSessionUsageException;
 import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
-import com.katesoft.gserver.commands.Commands.InvalidSessionUsageException;
 import com.katesoft.gserver.domain.Entities.BetLimits;
 import com.katesoft.gserver.domain.Entities.Coins;
 import com.katesoft.gserver.domain.GameBO;
@@ -77,7 +77,7 @@ public abstract class AbstractPlayer implements Player {
         sessions.clear();
     }
     @Override
-    public boolean execute(final Context context) {
+    public boolean execute(final Context context) throws InvalidSessionUsageException {
         final NetworkCommandContext ctx = (NetworkCommandContext) context;
         final String sessionId = checkNotNull( ctx.getCmd().getSessionId(), "got command=%s detached from session", ctx.getCmd() );
         final Optional<PlayerSession> opt = tryFind( sessions.values(), new Predicate<PlayerSession>() {
@@ -87,30 +87,31 @@ public abstract class AbstractPlayer implements Player {
             }
         } );
         if ( !opt.isPresent() ) {
-            String msg = String.format( "there is no such session = %s, please restart game play", sessionId );
-            InvalidSessionUsageException reply = InvalidSessionUsageException.newBuilder().setMsg( msg ).build();
-            ctx.getUserConnection().writeAsync( toReply( ctx.getCmd(), ctx.getCmdCodec(), InvalidSessionUsageException.cmd, reply ) );
-            return PROCESSING_COMPLETE;
+            throw new InvalidSessionUsageException( sessionId );
         }
 
         PlayerSession session = opt.get();
-        final Game g = session.getGame();
+        Game g = session.getGame();
+        boolean ack = false;
 
-        for ( ;; ) {
-            try {
-                GameCommand e = new GameCommand( ctx, session );
-                g.commandInterpreter().interpretCommand( e );
-                return e.isAcknowledged();
-            }
-            catch ( Throwable t ) {
-                logger.error(
-                        format( "Unable to interpet game specific command %s:%s", g.getClass().getSimpleName(), ctx
-                                .getCmd()
-                                .getClass()
-                                .getSimpleName() ),
-                        t );
-                Throwables.propagate( t );
+        try {
+            GameCommand e = new GameCommand( ctx, session );
+            g.commandInterpreter().interpretCommand( e );
+            ack = e.isAcknowledged();
+            if ( !ack ) {
+                throw new AbstractProtocolException.UnknownCommadException( g.getClass().getSimpleName() );
             }
         }
+        catch ( Throwable t ) {
+            logger
+                    .error(
+                            format( "Unable to interpet game specific command %s:%s", g.getClass().getSimpleName(), ctx
+                                    .getCmd()
+                                    .getClass()
+                                    .getSimpleName() ),
+                            t );
+            Throwables.propagate( t );
+        }
+        return ack;
     }
 }

@@ -153,7 +153,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
     }
     @Override
     @SuppressWarnings({ "unchecked" })
-    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedExtension<BaseCommand, Type> ext, Type t, String sessionId, boolean debug) {
+    public <Type> ListenableFuture<BaseCommand> callAsync(GeneratedExtension<BaseCommand, Type> ext, Type t, String sessionId) {
         BaseCommand.Builder cmd = BaseCommand.newBuilder().setExtension( ext, t );
         codec.encoder().apply( (Pair<Builder, GeneratedMessage>) ImmutablePair.of( cmd, t ) );
 
@@ -164,7 +164,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                 .setMessageTimestamp( System.currentTimeMillis() )
                 .setSequenceNumber( seqN )
                 .build();
-        cmd.setHeaders( headers ).setProtocolVersion( "1.0" ).setDebug( debug );
+        cmd.setHeaders( headers ).setProtocolVersion( "1.0" );
         if ( sessionId != null ) {
             cmd.setSessionId( sessionId );
         }
@@ -179,9 +179,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
             }
             else if ( connectionType == ConnectionType.WEBSOCKETS ) {
                 String json = JsonFormat.printToString( bcmd );
-                if ( debug ) {
-                    logger.debug( "sending {} via websockets", json );
-                }
+                logger.debug( "sending {} via websockets", json );
                 channelCtx.write( new TextWebSocketFrame( json ) );
             }
             channelCtx.flush();
