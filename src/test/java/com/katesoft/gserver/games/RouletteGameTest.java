@@ -19,8 +19,8 @@ import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
 import com.katesoft.gserver.games.RouletteGame.PositionAndPayout;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteBetPosition;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteSpinCommand;
 import com.katesoft.gserver.server.AbstractEmbeddedTest;
 
 public class RouletteGameTest {

@@ -4,7 +4,7 @@ import static com.google.common.base.Objects.toStringHelper;
 import static com.google.common.primitives.Ints.asList;
 import static com.katesoft.gserver.core.Commands.toReply;
 import static com.katesoft.gserver.games.RouletteGame.PositionAndPayout.of;
-import static com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition.*;
+import static com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteBetPosition.*;
 
 import java.util.List;
 import java.util.Map;
@@ -18,13 +18,13 @@ import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.GameCommandInterpreter;
 import com.katesoft.gserver.core.AbstractGame;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoCommand;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoReply;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoReply.Builder;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RoulettePositionInfo;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinReply;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.GetRoulettePositionInfoCommand;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.GetRoulettePositionInfoReply;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.GetRoulettePositionInfoReply.Builder;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteBetPosition;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RoulettePositionInfo;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteSpinCommand;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteSpinReply;
 
 public class RouletteGame extends AbstractGame {
     static final Map<RouletteBetPosition, PositionAndPayout> ALL = Maps.newLinkedHashMap();

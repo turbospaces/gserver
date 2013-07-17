@@ -53,6 +53,16 @@ message LoginCommnadException {
 	optional string stacktrace = 2;
 }
 //
+// signals that the session is no longer valid of can't be found on server when expected.
+//
+message InvalidSessionUsageException {
+	extend BaseCommand {
+		required InvalidSessionUsageException cmd = 102;
+	}
+	required string msg = 1;
+	optional string stacktrace = 2;
+}
+//
 // login into game play with some token (for web applications it's may be cookie), but it's rather abstract.
 // client needs to specify the target platform and optionally preferred game display language.
 // server responds with LoginCommandReply message (generates session id).
@@ -60,7 +70,7 @@ message LoginCommnadException {
 //
 message LoginCommand {
 	extend BaseCommand {
-		required LoginCommand cmd = 102;
+		required LoginCommand cmd = 103;
 	}
 	required string token = 1;
 	required string clientPlatform = 3;
@@ -71,7 +81,7 @@ message LoginCommand {
 //
 message ReloginCommand {
 	extend BaseCommand {
-		required ReloginCommand cmd = 103;
+		required ReloginCommand cmd = 104;
 	}
 	required string token = 1;
 }
@@ -82,7 +92,7 @@ message ReloginCommand {
 //
 message CloseGamePlayAndLogoutCommand {
 	extend BaseCommand {
-		required CloseGamePlayAndLogoutCommand cmd = 104;
+		required CloseGamePlayAndLogoutCommand cmd = 105;
 	}
 	required bool forceCloseConnection = 1 [default = true];
 }
@@ -91,7 +101,7 @@ message CloseGamePlayAndLogoutCommand {
 //
 message CloseGamePlayAndLogoutReply {
 	extend BaseCommand {
-		required CloseGamePlayAndLogoutReply cmd = 105;
+		required CloseGamePlayAndLogoutReply cmd = 106;
 	}
 }
 //
@@ -103,7 +113,7 @@ message CloseGamePlayAndLogoutReply {
 //
 message UpdatePlayerSettingsCommand {
 	extend BaseCommand {
-		required UpdatePlayerSettingsCommand cmd = 106;
+		required UpdatePlayerSettingsCommand cmd = 107;
 	}
 	required PlayerSettings settings = 1;
 }
@@ -112,7 +122,7 @@ message UpdatePlayerSettingsCommand {
 //
 message Geti18nMessagesCommand {
 	extend BaseCommand {
-		required Geti18nMessagesCommand cmd = 107;
+		required Geti18nMessagesCommand cmd = 108;
 	}
 	required string locale = 1;
 	repeated string keys = 2;
@@ -122,7 +132,7 @@ message Geti18nMessagesCommand {
 //
 message Geti18nMessagesReply {
 	extend BaseCommand {
-		required Geti18nMessagesReply cmd = 108;
+		required Geti18nMessagesReply cmd = 109;
 	}
 	repeated gserver.i18n values = 1;
 }

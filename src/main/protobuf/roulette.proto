@@ -4,7 +4,7 @@ import "domain.proto";
 package gserver.games.roullete;
 
 option optimize_for = SPEED;
-option java_package = "com.katesoft.gserver.games.roullete";
+option java_package = "com.katesoft.gserver.games.roulette";
 option java_outer_classname = "RoulleteCommands";
 
 enum RouletteBetPosition {

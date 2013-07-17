@@ -35,7 +35,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
     private final EventLoopGroup eventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() );
-    private RootDispatchHandler root;
+    private ChannelDispatchHandler root;
     private TransportServerSettings settings;
     private PlatformContext platform;
 
@@ -43,7 +43,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
     public void startServer(final TransportServer.TransportServerSettings s, final PlatformContext ctx) {
         this.settings = s;
         this.platform = ctx;
-        root = new RootDispatchHandler( eventGroup, ctx );
+        root = new ChannelDispatchHandler( eventGroup, ctx );
 
         final ServerBootstrap tcpBootstrap = new ServerBootstrap();
         tcpBootstrap

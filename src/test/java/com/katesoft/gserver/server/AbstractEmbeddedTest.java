@@ -49,7 +49,7 @@ import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.domain.AbstractDomainTest;
 import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.games.RouletteGame;
-import com.katesoft.gserver.games.roullete.RoulleteCommands;
+import com.katesoft.gserver.games.roulette.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
 import com.katesoft.gserver.spi.AbstractPlatformContext;
 import com.katesoft.gserver.spi.PlatformContext;

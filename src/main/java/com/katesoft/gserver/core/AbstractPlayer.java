@@ -1,7 +1,8 @@
 package com.katesoft.gserver.core;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.collect.Iterables.find;
+import static com.google.common.collect.Iterables.tryFind;
+import static com.katesoft.gserver.core.Commands.toReply;
 import static java.lang.String.format;
 
 import java.util.Map;
@@ -10,6 +11,7 @@ import org.apache.commons.chain.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
@@ -18,6 +20,7 @@ import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
+import com.katesoft.gserver.commands.Commands.InvalidSessionUsageException;
 import com.katesoft.gserver.domain.Entities.BetLimits;
 import com.katesoft.gserver.domain.Entities.Coins;
 import com.katesoft.gserver.domain.GameBO;
@@ -77,12 +80,20 @@ public abstract class AbstractPlayer implements Player {
     public boolean execute(final Context context) {
         final NetworkCommandContext ctx = (NetworkCommandContext) context;
         final String sessionId = checkNotNull( ctx.getCmd().getSessionId(), "got command=%s detached from session", ctx.getCmd() );
-        final PlayerSession session = find( sessions.values(), new Predicate<PlayerSession>() {
+        final Optional<PlayerSession> opt = tryFind( sessions.values(), new Predicate<PlayerSession>() {
             @Override
             public boolean apply(PlayerSession input) {
                 return input.id().equals( sessionId );
             }
         } );
+        if ( !opt.isPresent() ) {
+            String msg = String.format( "there is no such session = %s, please restart game play", sessionId );
+            InvalidSessionUsageException reply = InvalidSessionUsageException.newBuilder().setMsg( msg ).build();
+            ctx.getUserConnection().writeAsync( toReply( ctx.getCmd(), ctx.getCmdCodec(), InvalidSessionUsageException.cmd, reply ) );
+            return PROCESSING_COMPLETE;
+        }
+
+        PlayerSession session = opt.get();
         final Game g = session.getGame();
 
         for ( ;; ) {

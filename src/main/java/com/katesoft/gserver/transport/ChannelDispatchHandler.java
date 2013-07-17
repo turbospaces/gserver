@@ -58,18 +58,18 @@ import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.spi.PlatformContext;
 
 @Sharable
-class RootDispatchHandler extends SimpleChannelInboundHandler<Object> implements Closeable, Supplier<ChannelGroup> {
-    private static final Logger LOGGER = LoggerFactory.getLogger( RootDispatchHandler.class );
+public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> implements Closeable, Supplier<ChannelGroup> {
+    private static final Logger LOGGER = LoggerFactory.getLogger( ChannelDispatchHandler.class );
     private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
     private static AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
 
-    private final TextEncryptor encryptor = Encryptors.textEncryptor( RootDispatchHandler.class.getName(), false );
+    private final TextEncryptor encryptor = Encryptors.textEncryptor( ChannelDispatchHandler.class.getName(), false );
     private final ConcurrentMap<String, SocketUserConnection> connections = Maps.newConcurrentMap();
     private final ChannelGroup channelGroup;
     private final AtomicLong increment;
     private final PlatformContext platformInterface;
 
-    RootDispatchHandler(EventLoopGroup eventGroup, PlatformContext platformInterface) {
+    public ChannelDispatchHandler(EventLoopGroup eventGroup, PlatformContext platformInterface) {
         this.platformInterface = platformInterface;
         this.increment = new AtomicLong();
         this.channelGroup = new DefaultChannelGroup( eventGroup.next() );

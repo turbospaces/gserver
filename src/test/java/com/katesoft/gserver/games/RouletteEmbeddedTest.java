@@ -10,11 +10,11 @@ import org.junit.Test;
 
 import com.katesoft.gserver.api.BetWrapper;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoCommand;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.GetRoulettePositionInfoReply;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteBetPosition;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinCommand;
-import com.katesoft.gserver.games.roullete.RoulleteCommands.RouletteSpinReply;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.GetRoulettePositionInfoCommand;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.GetRoulettePositionInfoReply;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteBetPosition;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteSpinCommand;
+import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteSpinReply;
 import com.katesoft.gserver.server.AbstractEmbeddedTest;
 import com.katesoft.gserver.transport.ConnectionType;
 
