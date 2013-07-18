@@ -29,7 +29,7 @@ public class AbstractProtocolException extends NestedCheckedException {
             super( "Cmd can't be interpreted by game=%s, check protocol version and details" );
         }
         public UnknownCommadException(BaseCommand cmd) {
-            super("Unknown cmd=%s can't be processed by platform/game");
+            super( "Unknown cmd=%s can't be processed by platform/game" );
         }
     }
 
@@ -39,6 +39,15 @@ public class AbstractProtocolException extends NestedCheckedException {
     public static class InvalidSessionUsageException extends AbstractProtocolException {
         public InvalidSessionUsageException(String sessionId) {
             super( String.format( "There is no such session=%s, please restart game play", sessionId ) );
+        }
+    }
+
+    /**
+     * signals that command qualifier is unknown for platform and games, probably due to protocol version collision.
+     */
+    public static class UnknownCommandQualifierException extends AbstractProtocolException {
+        public UnknownCommandQualifierException(String qualifier) {
+            super( String.format( "Unknown cmd=%s, check protocol version", qualifier ) );
         }
     }
 }

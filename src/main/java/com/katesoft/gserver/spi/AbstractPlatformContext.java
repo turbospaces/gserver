@@ -97,7 +97,7 @@ public abstract class AbstractPlatformContext implements PlatformContext {
                 NetworkCommandContext ncc = (NetworkCommandContext) context;
                 BaseCommand cmd = ncc.getCmd();
                 UserConnection uc = ncc.getUserConnection();
-                Class<? extends GeneratedMessage> type = codec.decoder().apply( cmd );
+                Class<? extends GeneratedMessage> type = codec.decoder().apply( cmd ).get();
                 boolean processed = CONTINUE_PROCESSING;
 
                 /**

@@ -209,6 +209,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                     // ~~~ execute command ~~~
                     // ~~~ catch common exceptions ~~~
                     try {
+                        ncmd.recognizeCmd();
                         boolean processed = chain.execute( ncmd );
                         if ( !processed ) {
                             throw new AbstractProtocolException.UnknownCommadException( cmd );

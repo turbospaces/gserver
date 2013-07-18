@@ -5,6 +5,7 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Function;
+import com.google.common.base.Optional;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.ExtensionRegistry.ExtensionInfo;
 import com.google.protobuf.GeneratedMessage;
@@ -21,7 +22,7 @@ public interface CommandsQualifierCodec {
      * 
      * @return java class
      */
-    Function<BaseCommand, Class<? extends GeneratedMessage>> decoder() throws Exception;
+    Function<BaseCommand, Optional<Class<? extends GeneratedMessage>>> decoder() throws Exception;
     /**
      * Get function which will be applied in order to derive fully(or shortly) qualified name for command. The
      * parameter of function will be pair where <code>left</code> is base command builder and the <code>right</code> is
@@ -37,16 +38,18 @@ public interface CommandsQualifierCodec {
 
     public static final class ProtoCommandsCodec implements CommandsQualifierCodec {
         private final ExtensionRegistry extensionRegistry;
-        private final Function<BaseCommand, Class<? extends GeneratedMessage>> from = new Function<BaseCommand, Class<? extends GeneratedMessage>>() {
+        private final Function<BaseCommand, Optional<Class<? extends GeneratedMessage>>> from = new Function<BaseCommand, Optional<Class<? extends GeneratedMessage>>>() {
             @SuppressWarnings("unchecked")
             @Override
-            public Class<? extends GeneratedMessage> apply(BaseCommand input) {
+            public Optional<Class<? extends GeneratedMessage>> apply(BaseCommand input) {
                 String qualifier = input.getQualifier();
                 ExtensionInfo xinfo = extensionRegistry.findExtensionByName( qualifier + ".cmd" );
                 if ( xinfo != null ) {
-                    return (Class<? extends GeneratedMessage>) xinfo.defaultInstance.getClass();
+                    Class<? extends GeneratedMessage> clazz = (Class<? extends GeneratedMessage>) xinfo.defaultInstance.getClass();
+                    Optional<?> opt = Optional.of( clazz );
+                    return (Optional<Class<? extends GeneratedMessage>>) opt;
                 }
-                return null;
+                return Optional.absent();
             }
         };
         private final Function<Pair<BaseCommand.Builder, GeneratedMessage>, BaseCommand.Builder> to = new Function<Pair<BaseCommand.Builder, GeneratedMessage>, BaseCommand.Builder>() {
@@ -61,7 +64,7 @@ public interface CommandsQualifierCodec {
             this.extensionRegistry = extensionRegistry;
         }
         @Override
-        public Function<BaseCommand, Class<? extends GeneratedMessage>> decoder() {
+        public Function<BaseCommand, Optional<Class<? extends GeneratedMessage>>> decoder() {
             return from;
         }
         @Override

@@ -1,7 +1,7 @@
 import "commands.proto";
 import "domain.proto";
 
-package gserver.games.roullete;
+package gserver.games.roulette;
 
 option optimize_for = SPEED;
 option java_package = "com.katesoft.gserver.games.roulette";

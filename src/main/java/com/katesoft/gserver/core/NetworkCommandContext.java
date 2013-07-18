@@ -4,6 +4,9 @@ import java.util.HashMap;
 
 import org.apache.commons.chain.Context;
 
+import com.google.common.base.Optional;
+import com.google.protobuf.GeneratedMessage;
+import com.katesoft.gserver.api.AbstractProtocolException;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 
@@ -23,5 +26,11 @@ public class NetworkCommandContext extends HashMap implements Context {
     }
     public UserConnection getUserConnection() {
         return (UserConnection) get( "uc" );
+    }
+    public void recognizeCmd() throws Exception {
+        Optional<Class<? extends GeneratedMessage>> opt = getCmdCodec().decoder().apply( getCmd() );
+        if ( !opt.isPresent() ) {
+            throw new AbstractProtocolException.UnknownCommandQualifierException( getCmd().getQualifier() );
+        }
     }
 }

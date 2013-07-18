@@ -31,7 +31,7 @@ public final class GameCommand {
      * @throws Exception if the target class can't be decoded from message by qualifier.
      */
     public Class<? extends GeneratedMessage> cmdClass() throws Exception {
-        return ctx.getCmdCodec().decoder().apply( getCmd() );
+        return ctx.getCmdCodec().decoder().apply( getCmd() ).get();
     }
     /**
      * @return command itself wrapped into base command, you would need to get
