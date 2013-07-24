@@ -21,7 +21,7 @@ public class NettyWebsocketsServerTest extends AbstractEmbeddedTest {
     @Test
     public void works() throws InterruptedException, ExecutionException {
         assertEquals( 1, s.connectionsCount() );
-        assertSame( uc, s.getUserConnection( uc.id() ) );
+        assertSame( c.getUserConnection(), s.getUserConnection( c.getUserConnection().id() ) );
 
         login();
 

@@ -53,6 +53,9 @@ public abstract class AbstractDomainTest {
         } );
 
         username = "user-xxx";
+        loginToken = newRememberMeToken( newUserAccount( username ) );
+    }
+    public static UserAccountBO newUserAccount(String username) {
         UserAccountBO userAccount = new UserAccountBO();
         userAccount.setEnabled( true );
         userAccount.setUsername( username );
@@ -65,13 +68,18 @@ public abstract class AbstractDomainTest {
 
         repo.saveUserAccount( userAccount );
 
+        return userAccount;
+    }
+    public static String newRememberMeToken(UserAccountBO userAccount) {
         String tokenSeries = rememberMeServices.generateSeriesData();
         String tokenValue = rememberMeServices.generateTokenData();
-
         String rememberMe = rememberMeServices.encodeCookie( new String[] { tokenSeries, tokenValue } );
-        loginToken = rememberMeServices.encodeWebsocketLoginToken( rememberMe ).getToken();
+        
+        String loginToken = rememberMeServices.encodeWebsocketLoginToken( rememberMe ).getToken();
 
         PersistentRememberMeToken token = new PersistentRememberMeToken( userAccount.getUsername(), tokenSeries, tokenValue, new Date() );
         tokenRepo.createNewToken( token );
+        
+        return loginToken;
     }
 }

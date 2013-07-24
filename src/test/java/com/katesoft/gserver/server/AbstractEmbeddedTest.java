@@ -2,6 +2,7 @@ package com.katesoft.gserver.server;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.net.HostAndPort.fromParts;
+import static com.google.common.util.concurrent.Uninterruptibles.getUninterruptibly;
 import static com.katesoft.gserver.misc.Misc.shutdownExecutor;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
@@ -20,6 +21,7 @@ import org.springframework.context.support.ReloadableResourceBundleMessageSource
 
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.net.HostAndPort;
@@ -63,9 +65,9 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
 
     protected static NettyServer s;
     protected static NettyTcpClient c;
-    protected static UserConnection uc;
     protected ConnectionType connectionType = ConnectionType.TCP;
-
+    protected TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
+    protected PlatformContext ctx;
     protected Logger logger = LoggerFactory.getLogger( getClass() );
 
     static {
@@ -75,17 +77,10 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     @Before
     public void setup() {
         if ( s == null ) {
-            PlatformContext ctx = platform();
-            TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
-
+            ctx = platform();
             s = new NettyServer();
             s.startServer( settings, ctx );
-
-            HostAndPort x = ( connectionType == ConnectionType.TCP ? settings.tcp : settings.websockets.get() );
-
-            c = new NettyTcpClient( x, ctx.commandsCodec(), connectionType );
-            c.run();
-            uc = s.awaitForClientHandshake( c.get() );
+            c = newClient();
         }
     }
     @AfterClass
@@ -93,10 +88,14 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         shutdownExecutor( SCHEDULED_EXEC );
         try {
             try {
-                c.close();
+                if ( c != null ) {
+                    c.close();
+                }
             }
             finally {
-                s.close();
+                if ( s != null ) {
+                    s.close();
+                }
             }
         }
         finally {
@@ -120,8 +119,11 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         return new GameCommand( ctx, ps );
     }
     protected void login() {
-        LoginCommand cmd = LoginCommand.newBuilder().setToken( loginToken ).setClientPlatform( "flash" ).build();
-        c.callAsync( LoginCommand.cmd, cmd, null );
+        login( c, loginToken );
+    }
+    protected static void login(NettyTcpClient client, String token) {
+        LoginCommand cmd = LoginCommand.newBuilder().setToken( token ).setClientPlatform( "flash" ).build();
+        client.callAsync( LoginCommand.cmd, cmd, null );
     }
     protected CloseGamePlayAndLogoutReply logout(String sessionId) throws InterruptedException, ExecutionException {
         CloseGamePlayAndLogoutCommand cmd = CloseGamePlayAndLogoutCommand.newBuilder().setForceCloseConnection( false ).build();
@@ -133,7 +135,10 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         BaseCommand bcmd = c.callAsync( Geti18nMessagesCommand.cmd, cmd, null ).get();
         return bcmd.getExtension( Geti18nMessagesReply.cmd );
     }
-    protected OpenGamePlayReply openGamePlay(final Class<? extends Game> game) throws InterruptedException, ExecutionException {
+    protected OpenGamePlayReply openGamePlay(final Class<? extends Game> game) {
+        return openGamePlay( game, c );
+    }
+    protected OpenGamePlayReply openGamePlay(final Class<? extends Game> game, NettyTcpClient client) {
         ImmutableSet<GameBO> allGames = repo.findAllGames();
         GameBO bo = Iterables.find( allGames, new Predicate<GameBO>() {
             @Override
@@ -143,10 +148,24 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         } );
 
         OpenGamePlayCommand cmd = OpenGamePlayCommand.newBuilder().setGameId( bo.getPrimaryKey() ).build();
-        BaseCommand bcmd = c.callAsync( OpenGamePlayCommand.cmd, cmd, null ).get();
-        OpenGamePlayReply reply = bcmd.getExtension( OpenGamePlayReply.cmd );
-        checkNotNull( reply.getSessionId() );
-        return reply;
+        for ( ;; )
+            try {
+                BaseCommand bcmd = getUninterruptibly( client.callAsync( OpenGamePlayCommand.cmd, cmd, null ) );
+                OpenGamePlayReply reply = bcmd.getExtension( OpenGamePlayReply.cmd );
+                checkNotNull( reply.getSessionId() );
+                return reply;
+            }
+            catch ( ExecutionException e ) {
+                Throwables.propagate( e );
+            }
+    }
+    protected NettyTcpClient newClient() {
+        HostAndPort x = ( connectionType == ConnectionType.TCP ? settings.tcp : settings.websockets.get() );
+        NettyTcpClient client = new NettyTcpClient( x, ctx.commandsCodec(), connectionType );
+        client.run();
+        UserConnection userConnection = s.awaitForClientHandshake( client.get() );
+        client.associateUserConnection( userConnection );
+        return client;
     }
     public static PlatformContext platform() {
         ReloadableResourceBundleMessageSource ms = new ReloadableResourceBundleMessageSource();

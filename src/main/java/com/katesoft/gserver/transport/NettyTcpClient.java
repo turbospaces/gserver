@@ -43,6 +43,7 @@ import com.google.protobuf.GeneratedMessage;
 import com.google.protobuf.GeneratedMessage.GeneratedExtension;
 import com.googlecode.protobuf.format.JsonFormat;
 import com.katesoft.gserver.api.TransportClient;
+import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
@@ -58,6 +59,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
     private final CommandsQualifierCodec codec;
     private SocketChannel sch;
     private ChannelHandlerContext channelCtx;
+    private UserConnection userConnection;
 
     public NettyTcpClient(HostAndPort hostAndPort, CommandsQualifierCodec commandsCodec, ConnectionType type) {
         this.hostAndPort = hostAndPort;
@@ -198,5 +200,11 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
         if ( eventGroup != null ) {
             eventGroup.shutdownGracefully();
         }
+    }
+    public void associateUserConnection(UserConnection userConnection) {
+        this.userConnection = userConnection;
+    }
+    public UserConnection getUserConnection() {
+        return userConnection;
     }
 }

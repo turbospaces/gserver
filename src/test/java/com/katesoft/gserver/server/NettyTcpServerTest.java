@@ -14,10 +14,10 @@ public class NettyTcpServerTest extends AbstractEmbeddedTest {
 
     @Test
     public void works() {
-        logger.debug( uc.toString() );
+        logger.debug( c.getUserConnection().toString() );
 
         assertEquals( 1, s.connectionsCount() );
-        assertSame( uc, s.getUserConnection( uc.id() ) );
+        assertSame( c.getUserConnection(), s.getUserConnection( c.getUserConnection().id() ) );
 
         login();
     }

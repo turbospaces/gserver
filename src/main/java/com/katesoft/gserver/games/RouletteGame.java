@@ -29,6 +29,7 @@ import com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteSpinReply;
 public class RouletteGame extends AbstractGame {
     static final Map<RouletteBetPosition, PositionAndPayout> ALL = Maps.newLinkedHashMap();
     static final Map<Integer, Set<PositionAndPayout>> NUMS = Maps.newHashMap();
+    static GetRoulettePositionInfoReply POSITION_INFO_REPLY;
 
     public RouletteGame() {
         interpreter = new GameCommandInterpreter() {
@@ -38,16 +39,7 @@ public class RouletteGame extends AbstractGame {
                     @Override
                     public void run() {
                         e.getCmd().getExtension( GetRoulettePositionInfoCommand.cmd );
-                        Builder replyBuilder = GetRoulettePositionInfoReply.newBuilder();
-                        for ( PositionAndPayout pp : ALL.values() ) {
-                            replyBuilder.addPositions( RoulettePositionInfo
-                                    .newBuilder()
-                                    .setName( pp.position.name() )
-                                    .setPayout( pp.payout )
-                                    .addAllNumbers( pp.numbers )
-                                    .build() );
-                        }
-                        e.replyAsync( toReply( e, GetRoulettePositionInfoReply.cmd, replyBuilder.build() ) );
+                        e.replyAsync( toReply( e, GetRoulettePositionInfoReply.cmd, POSITION_INFO_REPLY ) );
                     }
                 } );
                 e.interpretIfPossible( RouletteSpinCommand.class, new Runnable() {
@@ -263,6 +255,17 @@ public class RouletteGame extends AbstractGame {
         for ( int i = -1; i <= 36; i++ ) {
             NUMS.put( i, possiblePositionsFor( i ) );
         }
+        
+        Builder positionInfoBuilder = GetRoulettePositionInfoReply.newBuilder();
+        for ( PositionAndPayout pp : ALL.values() ) {
+            positionInfoBuilder.addPositions( RoulettePositionInfo
+                    .newBuilder()
+                    .setName( pp.position.name() )
+                    .setPayout( pp.payout )
+                    .addAllNumbers( pp.numbers )
+                    .build() );
+        }
+        POSITION_INFO_REPLY = positionInfoBuilder.build();
     }
 
     private static Set<PositionAndPayout> possiblePositionsFor(int number) {
