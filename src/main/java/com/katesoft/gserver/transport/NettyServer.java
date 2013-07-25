@@ -5,6 +5,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -24,10 +25,12 @@ import java.net.SocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.net.HostAndPort;
 import com.google.protobuf.ExtensionRegistry;
 import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
 import com.katesoft.gserver.commands.Commands;
+import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.misc.Misc;
 import com.katesoft.gserver.spi.PlatformContext;
 
@@ -36,11 +39,11 @@ public class NettyServer implements TransportServer<SocketChannel> {
 
     private final EventLoopGroup eventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() );
     private ChannelDispatchHandler root;
-    private TransportServerSettings settings;
+    private ServerSettings settings;
     private PlatformContext platform;
 
     @Override
-    public void startServer(final TransportServer.TransportServerSettings s, final PlatformContext ctx) {
+    public void startServer(final ServerSettings s, final PlatformContext ctx) {
         this.settings = s;
         this.platform = ctx;
         root = new ChannelDispatchHandler( eventGroup, ctx );
@@ -57,9 +60,11 @@ public class NettyServer implements TransportServer<SocketChannel> {
                         registerProtobufCodecs( p, platform.commandsCodec().extensionRegistry() ).addLast( root );
                     }
                 } );
-        tcpBootstrap.bind( settings.tcp.getHostText(), settings.tcp.getPort() ).syncUninterruptibly();
+        applyChannelOptions( tcpBootstrap, settings );
+        HostAndPort hostAndPort = HostAndPort.fromString( settings.getTcpBindAddress() );
+        tcpBootstrap.bind( hostAndPort.getHostText(), hostAndPort.getPort() ).syncUninterruptibly();
 
-        if ( settings.websockets.isPresent() ) {
+        if ( settings.hasWebsocketsBindAddress() ) {
             final ServerBootstrap webSocksBootstap = new ServerBootstrap();
             webSocksBootstap
                     .group( eventGroup )
@@ -74,8 +79,28 @@ public class NettyServer implements TransportServer<SocketChannel> {
                             p.addLast( root );
                         }
                     } );
-            webSocksBootstap.bind( settings.websockets.get().getHostText(), settings.websockets.get().getPort() ).syncUninterruptibly();
+            applyChannelOptions( webSocksBootstap, settings );
+            hostAndPort = HostAndPort.fromString( settings.getWebsocketsBindAddress() );
+            webSocksBootstap.bind( hostAndPort.getHostText(), hostAndPort.getPort() ).syncUninterruptibly();
         }
+    }
+    protected void applyChannelOptions(ServerBootstrap bootstrap, ServerSettings serverSettings) {
+        bootstrap.option( ChannelOption.SO_KEEPALIVE, true );
+        bootstrap.option( ChannelOption.TCP_NODELAY, true );
+        bootstrap.option( ChannelOption.SO_REUSEADDR, false );
+
+        if ( serverSettings.hasTcpSendBufferSize() ) {
+            bootstrap.option( ChannelOption.SO_SNDBUF, serverSettings.getTcpSendBufferSize() );
+        }
+        if ( serverSettings.hasTcpReceiveBufferSize() ) {
+            bootstrap.option( ChannelOption.SO_RCVBUF, serverSettings.getTcpReceiveBufferSize() );
+        }
+        if ( serverSettings.hasTcpSocketLinger() ) {
+            bootstrap.option( ChannelOption.SO_LINGER, serverSettings.getTcpSocketLinger() );
+        }
+
+        bootstrap.childOption( ChannelOption.SO_KEEPALIVE, true );
+        bootstrap.childOption( ChannelOption.TCP_NODELAY, true );
     }
     @Override
     public void close() {
@@ -100,7 +125,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
     public int connectionsCount() {
         return root.get().size();
     }
-    public TransportServerSettings transportSettings() {
+    public ServerSettings transportSettings() {
         return settings;
     }
     @Override

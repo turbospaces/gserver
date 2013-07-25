@@ -216,6 +216,7 @@ message GetRoulettePositionInfoCommand {
 	extend gserver.BaseCommand {
 		required GetRoulettePositionInfoCommand cmd = 202;
 	}
+	repeated RouletteBetPosition positions = 1;
 }
 
 message GetRoulettePositionInfoReply {

@@ -48,6 +48,7 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
+import com.katesoft.gserver.domain.Entities.ServerSettings;
 
 public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
@@ -76,6 +77,8 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                 .channel( NioSocketChannel.class )
                 .option( ChannelOption.TCP_NODELAY, true )
                 .option( ChannelOption.SO_KEEPALIVE, true )
+                .option( ChannelOption.SO_SNDBUF, ServerSettings.getDefaultInstance().getTcpSendBufferSize() )
+                .option( ChannelOption.SO_RCVBUF, ServerSettings.getDefaultInstance().getTcpReceiveBufferSize() )
                 .handler( new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws URISyntaxException {
@@ -201,8 +204,8 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
             eventGroup.shutdownGracefully();
         }
     }
-    public void associateUserConnection(UserConnection userConnection) {
-        this.userConnection = userConnection;
+    public void associateUserConnection(UserConnection uc) {
+        this.userConnection = uc;
     }
     public UserConnection getUserConnection() {
         return userConnection;

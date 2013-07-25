@@ -38,8 +38,19 @@ public class RouletteGame extends AbstractGame {
                 e.interpretIfPossible( GetRoulettePositionInfoCommand.class, new Runnable() {
                     @Override
                     public void run() {
-                        e.getCmd().getExtension( GetRoulettePositionInfoCommand.cmd );
-                        e.replyAsync( toReply( e, GetRoulettePositionInfoReply.cmd, POSITION_INFO_REPLY ) );
+                        GetRoulettePositionInfoCommand cmd = e.getCmd().getExtension( GetRoulettePositionInfoCommand.cmd );
+                        List<RouletteBetPosition> positionsList = cmd.getPositionsList();
+                        if ( positionsList.isEmpty() ) {
+                            e.replyAsync( toReply( e, GetRoulettePositionInfoReply.cmd, POSITION_INFO_REPLY ) );
+                        }
+                        else {
+                            Builder b = GetRoulettePositionInfoReply.newBuilder();
+                            List<RoulettePositionInfo> list = POSITION_INFO_REPLY.getPositionsList();
+                            for ( RoulettePositionInfo i : list ) {
+                                b.addPositions( i );
+                            }
+                            e.replyAsync( toReply( e, GetRoulettePositionInfoReply.cmd, b.build() ) );
+                        }
                     }
                 } );
                 e.interpretIfPossible( RouletteSpinCommand.class, new Runnable() {
@@ -255,7 +266,7 @@ public class RouletteGame extends AbstractGame {
         for ( int i = -1; i <= 36; i++ ) {
             NUMS.put( i, possiblePositionsFor( i ) );
         }
-        
+
         Builder positionInfoBuilder = GetRoulettePositionInfoReply.newBuilder();
         for ( PositionAndPayout pp : ALL.values() ) {
             positionInfoBuilder.addPositions( RoulettePositionInfo

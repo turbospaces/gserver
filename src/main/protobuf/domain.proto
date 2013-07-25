@@ -69,17 +69,24 @@ message PlayerSettings {
 }
 //
 // server settings.
+// 1) tcp-send-buffer size in bytes (netty optimization)
+// 2) tcp-receive-buffer size in bytes (netty optimization)
+// 3) tcp-socket-linger (netty socket settings)
+// x) tcp-sockets bind address (which host and port to use for direct TCP persistent connections).
+// x) flash-sockets bind address (which host and port to use for flash persistent connections).
+// x) web-sockets bind address (which host and port to use for flash persistent connections).
 //
 message ServerSettings {
+	optional int32 tcpSendBufferSize = 1 [default = 1048576];
+	optional int32 tcpReceiveBufferSize = 2 [default = 1048576];
+	optional int32 tcpSocketLinger = 3 [default = 2048];
+	optional string tcpBindAddress = 6 [default = '0.0.0.0:8190' ];
+	optional string websocketsBindAddress = 7 [default = '0.0.0.0:8191'];
+	optional string flashBindAddress = 8 [default = '0.0.0.0:8192'];
+
 	// how long generated websockets login token to be valid.
 	// by default valid for 30 minutes.
-	required int32 websocketLoginTokenExpiration = 1 [default = 108000];
+	optional int32 websocketLoginTokenExpiration = 4 [default = 108000];
 	// password to use in order to encrypt generated websockets login token.
-	required string websocketLoginEncryptorPassword = 2 [default = 'wsLoginTokenEncryptor'];
-	// which host and port to use for direct TCP persistent connections.
-	optional string tcpHostAndPort = 3 [default = '0.0.0.0:8190' ];
-	// which host and port to use for websocket persistent connections.
-	optional string websocketsHostAndPort = 4 [default = '0.0.0.0:8191'];
-	// which host and port to use for flash persistent connections.
-	optional string flashHostAndPort = 5 [default = '0.0.0.0:8192'];
+	optional string websocketLoginEncryptorPassword = 5 [default = 'wsLoginTokenEncryptor'];
 }

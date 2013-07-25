@@ -2,6 +2,7 @@ package com.katesoft.gserver.server;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.net.HostAndPort.fromParts;
+import static com.google.common.net.HostAndPort.fromString;
 import static com.google.common.util.concurrent.Uninterruptibles.getUninterruptibly;
 import static com.katesoft.gserver.misc.Misc.shutdownExecutor;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
@@ -19,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 
-import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
@@ -49,6 +49,7 @@ import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
 import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.domain.AbstractDomainTest;
+import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.games.RouletteGame;
 import com.katesoft.gserver.games.roulette.RoulleteCommands;
@@ -66,7 +67,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     protected static NettyServer s;
     protected static NettyTcpClient c;
     protected ConnectionType connectionType = ConnectionType.TCP;
-    protected TransportServer.TransportServerSettings settings = TransportServer.TransportServerSettings.avail();
+    protected ServerSettings settings = TransportServer.Util.avail();
     protected PlatformContext ctx;
     protected Logger logger = LoggerFactory.getLogger( getClass() );
 
@@ -160,7 +161,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
             }
     }
     protected NettyTcpClient newClient() {
-        HostAndPort x = ( connectionType == ConnectionType.TCP ? settings.tcp : settings.websockets.get() );
+        HostAndPort x = fromString( ( connectionType == ConnectionType.TCP ? settings.getTcpBindAddress() : settings.getWebsocketsBindAddress() ) );
         NettyTcpClient client = new NettyTcpClient( x, ctx.commandsCodec(), connectionType );
         client.run();
         UserConnection userConnection = s.awaitForClientHandshake( client.get() );
@@ -183,14 +184,16 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     public static void main(String... args) throws InterruptedException {
         AbstractDomainTest.beforeClass();
         new AbstractDomainTest() {}.before();
-        TransportServer.TransportServerSettings settings = new TransportServer.TransportServerSettings();
-        settings.tcp = fromParts( "localhost", 8189 );
-        settings.websockets = Optional.of( fromParts( "localhost", 8190 ) );
-
         PlatformContext ctx = platform();
 
         NettyServer ms = new NettyServer();
-        ms.startServer( settings, ctx );
+        ms.startServer(
+                ServerSettings
+                        .newBuilder()
+                        .setTcpBindAddress( fromParts( "localhost", 8189 ).toString() )
+                        .setWebsocketsBindAddress( fromParts( "localhost", 8190 ).toString() )
+                        .build(),
+                ctx );
         synchronized ( ms ) {
             ms.wait();
         }
