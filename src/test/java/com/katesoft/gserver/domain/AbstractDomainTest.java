@@ -1,5 +1,6 @@
 package com.katesoft.gserver.domain;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 import org.junit.AfterClass;
@@ -14,6 +15,7 @@ import org.springframework.security.web.authentication.rememberme.PersistentReme
 import com.katesoft.gserver.domain.support.RedisPersistentTokenBasedRememberMeServices;
 import com.katesoft.gserver.domain.support.RedisPersistentTokenRepository;
 import com.katesoft.gserver.domain.support.RedisUserDetailsService;
+import com.katesoft.gserver.misc.Misc;
 
 public abstract class AbstractDomainTest {
     protected static RedisPersistentTokenBasedRememberMeServices rememberMeServices;
@@ -65,6 +67,7 @@ public abstract class AbstractDomainTest {
         userAccount.setProvider( "facebook" );
         userAccount.setProviderUserId( Long.valueOf( System.currentTimeMillis() ).toString() );
         userAccount.setEmail( "not-really@email.com" );
+        userAccount.setBalance( BigDecimal.valueOf( 1000 * 0.95 * Misc.RANDOM.nextInt( 16 ) ) );
 
         repo.saveUserAccount( userAccount );
 

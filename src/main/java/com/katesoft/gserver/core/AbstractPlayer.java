@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.tryFind;
 import static java.lang.String.format;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 import org.apache.commons.chain.Context;
@@ -31,10 +32,12 @@ public abstract class AbstractPlayer implements Player {
 
     protected final Map<String, PlayerSession> sessions = Maps.newHashMap();
     protected final String userId, displayName;
+    protected BigDecimal balance;
 
     public AbstractPlayer(UserAccountBO userAccount) {
         this.userId = userAccount.getPrimaryKey();
         this.displayName = userAccount.toFullName();
+        this.balance = userAccount.getBalance();
     }
     @Override
     public final String userId() {
@@ -43,6 +46,16 @@ public abstract class AbstractPlayer implements Player {
     @Override
     public String displayName() {
         return displayName;
+    }
+    @Override
+    public BigDecimal balance() {
+        return balance;
+    }
+    @Override
+    public void updateBalance(BigDecimal amount) {
+        this.balance = amount;
+        for ( PlayerSession ps : sessions.values() ) {
+        }
     }
     // @formatter:off
     @Override

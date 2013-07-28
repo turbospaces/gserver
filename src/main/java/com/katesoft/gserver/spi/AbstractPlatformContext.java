@@ -128,6 +128,8 @@ public abstract class AbstractPlatformContext implements PlatformContext {
                             .setSessionId( playerSession.sessionId )
                             .setBetLimits( playerSession.betLimits )
                             .setCoins( playerSession.coins )
+                            .setBalance( player.balance().doubleValue() )
+                            .setDisplayName( player.displayName() )
                             .build();
 
                     uc.writeAsync( toReply( cmd, commandsCodec(), OpenGamePlayReply.cmd, reply ) );

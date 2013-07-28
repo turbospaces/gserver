@@ -37,8 +37,8 @@ public class NettyPerformanceTest extends AbstractEmbeddedTest {
                     public void run() {
                         OpenGamePlayReply openGamePlay = openGamePlay( RouletteGame.class, client );
 
-                        for ( int j = 0; j < 256; j++ ) {
-                            ListenableFuture[] replies = new ListenableFuture[32];
+                        for ( int j = 0; j < 1024; j++ ) {
+                            ListenableFuture[] replies = new ListenableFuture[64];
                             for ( int i = 0; i < replies.length; i++ ) {
                                 replies[i] = client.callAsync( GetRoulettePositionInfoCommand.cmd, GetRoulettePositionInfoCommand
                                         .newBuilder()

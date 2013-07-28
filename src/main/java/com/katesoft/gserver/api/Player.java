@@ -1,6 +1,7 @@
 package com.katesoft.gserver.api;
 
 import java.io.Closeable;
+import java.math.BigDecimal;
 
 import org.apache.commons.chain.Command;
 import org.apache.commons.chain.Context;
@@ -12,6 +13,8 @@ import com.katesoft.gserver.domain.GameBO;
 public interface Player extends Closeable, Command {
     String userId();
     String displayName();
+    BigDecimal balance();
+    void updateBalance(BigDecimal amount);
     PlayerSession openPlayerSession(String sessionId,
                                     UserConnection uc,
                                     Game game,

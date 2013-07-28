@@ -1,5 +1,6 @@
 package com.katesoft.gserver.domain;
 
+import java.math.BigDecimal;
 import java.util.Iterator;
 
 import org.springframework.dao.ConcurrencyFailureException;
@@ -56,6 +57,7 @@ public class RedisDomainRepository {
                 ops.put( "first_name", account.getFirstname() );
                 ops.put( "last_name", account.getLastname() );
                 ops.put( "user_name", account.getUsername() );
+                ops.put( "balance", account.getBalance().toString() );
                 ops.put( "email", account.getEmail() );
                 ops.put( "password", account.getPassword() );
                 ops.put( "enabled", Boolean.toString( account.isEnabled() ) );
@@ -143,6 +145,7 @@ public class RedisDomainRepository {
             account.setEmail( userOps.get( "email" ) );
             account.setPassword( userOps.get( "password" ) );
             account.setEnabled( Boolean.parseBoolean( userOps.get( "enabled" ) ) );
+            account.setBalance( new BigDecimal( userOps.get( "balance" ) ) );
             return account;
         }
     };

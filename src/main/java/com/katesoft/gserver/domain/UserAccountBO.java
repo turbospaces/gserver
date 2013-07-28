@@ -1,5 +1,6 @@
 package com.katesoft.gserver.domain;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -9,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 @SuppressWarnings("serial")
 public class UserAccountBO extends UserAccountBase implements UserDetails, BO {
+    private BigDecimal balance;
     public UserAccountBO() {}
     public UserAccountBO(UserAccountBase accountBase) {
         super( accountBase );
@@ -16,6 +18,12 @@ public class UserAccountBO extends UserAccountBase implements UserDetails, BO {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singleton( new SimpleGrantedAuthority( "ROLE_USER" ) );
+    }
+    public BigDecimal getBalance() {
+        return balance;
+    }
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
     }
     @Override
     public String getUsername() {

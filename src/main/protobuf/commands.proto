@@ -9,8 +9,8 @@ option java_outer_classname = "Commands";
 //
 message MessageHeaders {
 	required string correlationID = 1;
-	required int64 sequenceNumber = 2;
-	required int64 messageTimestamp = 3;
+	required sint64 sequenceNumber = 2;
+	required sint64 messageTimestamp = 3;
 }
 //
 // Base command defines:
@@ -132,13 +132,25 @@ message OpenGamePlayCommand {
 //
 // reply to open game play command.
 // contains bet limits for the game and coins layout and game display name.
+// balance is immediately available in the reply message.
 //
 message OpenGamePlayReply {
 	extend BaseCommand {
 		required OpenGamePlayReply cmd = 111;
 	}
 	required string sessionId = 1;
-	required BetLimits betLimits = 2;
-	required Coins coins = 3;
-	required bool reattached = 4 [default = false];
+	required double balance = 2;
+	required BetLimits betLimits = 4;
+	required Coins coins = 5;
+	required bool reattached = 6 [default = false];
+	required string displayName = 7;
+}
+//
+// updates user balance.
+//
+message BalanceUpdateNotify {
+	extend BaseCommand {
+		required OpenGamePlayReply cmd = 112;
+	}
+	required double balance = 1;
 }

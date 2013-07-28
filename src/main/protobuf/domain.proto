@@ -29,7 +29,7 @@ enum Coin {
 //
 message CoinQuantitySlice {
 	required Coin coin = 1;
-	required int32 quantity = 2;
+	required uint32 quantity = 2;
 }
 
 message Coins {
@@ -47,15 +47,15 @@ message Bet {
 message BetResult {
 	required Bet bet = 1;
 	required bool win = 2;
-	required int32 amountUnsigned = 3;
+	required uint32 amountUnsigned = 3;
 }
 //
 // define minimal bet amount and maximum bet amount.
 //
 message BetLimits {
 	extensions 10 to 100;
-	required int32 minBet = 1;
-	required int32 maxBet = 2;
+	required uint32 minBet = 1;
+	required uint32 maxBet = 2;
 }
 //
 // commons player settings
@@ -77,16 +77,16 @@ message PlayerSettings {
 // x) web-sockets bind address (which host and port to use for flash persistent connections).
 //
 message ServerSettings {
-	optional int32 tcpSendBufferSize = 1 [default = 1048576];
-	optional int32 tcpReceiveBufferSize = 2 [default = 1048576];
-	optional int32 tcpSocketLinger = 3 [default = 2048];
+	optional uint32 tcpSendBufferSize = 1 [default = 1048576];
+	optional uint32 tcpReceiveBufferSize = 2 [default = 1048576];
+	optional uint32 tcpSocketLinger = 3 [default = 2048];
 	optional string tcpBindAddress = 6 [default = '0.0.0.0:8190' ];
 	optional string websocketsBindAddress = 7 [default = '0.0.0.0:8191'];
 	optional string flashBindAddress = 8 [default = '0.0.0.0:8192'];
 
 	// how long generated websockets login token to be valid.
 	// by default valid for 30 minutes.
-	optional int32 websocketLoginTokenExpiration = 4 [default = 108000];
+	optional uint32 websocketLoginTokenExpiration = 4 [default = 108000];
 	// password to use in order to encrypt generated websockets login token.
 	optional string websocketLoginEncryptorPassword = 5 [default = 'wsLoginTokenEncryptor'];
 }
