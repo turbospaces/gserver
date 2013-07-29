@@ -32,6 +32,7 @@ import com.katesoft.gserver.api.Game;
 import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.GamePlayContext;
 import com.katesoft.gserver.api.GamePlayContext.AbstractGamePlayContext;
+import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.TransportServer;
 import com.katesoft.gserver.api.UserConnection;
@@ -49,12 +50,16 @@ import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
 import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.domain.AbstractDomainTest;
+import com.katesoft.gserver.domain.Entities.BetLimits;
+import com.katesoft.gserver.domain.Entities.Coin;
+import com.katesoft.gserver.domain.Entities.Coins;
 import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.games.RouletteGame;
 import com.katesoft.gserver.games.roulette.RoulleteCommands;
 import com.katesoft.gserver.misc.Misc;
 import com.katesoft.gserver.spi.AbstractPlatformContext;
+import com.katesoft.gserver.spi.ConfigurationProvider;
 import com.katesoft.gserver.spi.PlatformContext;
 import com.katesoft.gserver.transport.ConnectionType;
 import com.katesoft.gserver.transport.NettyServer;
@@ -178,9 +183,17 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
 
         repo.saveGame( new GameBO( "amrl", "American Roulette", RouletteGame.class.getName() ) );
 
-        return new AbstractPlatformContext( ctx, codec, repo, rememberMeServices ) {};
+        return new AbstractPlatformContext( ctx, codec, repo, rememberMeServices, new ConfigurationProvider() {
+            @Override
+            public Coins getCoins(GameBO g, Player p) {
+                return Coins.newBuilder().addAllCoins( ImmutableSet.copyOf( Coin.values() ) ).build();
+            }
+            @Override
+            public BetLimits getBetLimits(GameBO g, Player p) {
+                return BetLimits.newBuilder().setMaxBet( Short.MAX_VALUE ).setMinBet( 1 ).build();
+            }
+        } ) {};
     }
-
     public static void main(String... args) throws InterruptedException {
         AbstractDomainTest.beforeClass();
         new AbstractDomainTest() {}.before();

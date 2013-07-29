@@ -77,7 +77,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
-        SocketChannel ch = (SocketChannel) ctx.pipeline().channel();
+        SocketChannel ch = (SocketChannel) ctx.channel();
         String id = encode( encryptor, String.valueOf( currentTimeMillis() ), String.valueOf( increment.getAndIncrement() ) );
         SocketUserConnection uc = new SocketUserConnection( ch, id );
         ch.attr( USER_CONNECTION_ATTR ).set( uc );
@@ -121,18 +121,18 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
         else if ( msg instanceof WebSocketFrame ) {
             WebSocketFrame frame = (WebSocketFrame) msg;
             if ( frame instanceof CloseWebSocketFrame ) {
-                LOGGER.debug( "ws connection({}) closed", userConnection.id() );
                 frame.retain();
-                Attribute<WebSocketServerHandshaker> attr = ctx.attr( WS_HANDSHAKER_ATTR );
+                Attribute<WebSocketServerHandshaker> attr = ctx.channel().attr( WS_HANDSHAKER_ATTR );
                 if ( attr != null ) {
                     WebSocketServerHandshaker wsHandshaker = attr.get();
                     try {
                         if ( wsHandshaker != null ) {
                             wsHandshaker.close( ctx.channel(), (CloseWebSocketFrame) frame );
+                            LOGGER.debug( "ws connection({}) closed", userConnection.id() );
                         }
                     }
                     finally {
-                        ctx.attr( WS_HANDSHAKER_ATTR ).remove();
+                        ctx.channel().attr( WS_HANDSHAKER_ATTR ).remove();
                     }
                 }
             }
@@ -282,7 +282,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                 case WEBSOCKETS: {
                     String json = JsonFormat.printToString( message );
                     LOGGER.debug( "sending ws response={}", json );
-                    ch.write( new TextWebSocketFrame( json ) );
+                    f = ch.write( new TextWebSocketFrame( json ) );
                     break;
                 }
                 case FLASH:

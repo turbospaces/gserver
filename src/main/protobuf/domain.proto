@@ -56,6 +56,8 @@ message BetLimits {
 	extensions 10 to 100;
 	required uint32 minBet = 1;
 	required uint32 maxBet = 2;
+	optional uint32 minPositionBet = 3;
+	optional uint32 maxPositionBet = 4;
 }
 //
 // commons player settings

@@ -7,7 +7,7 @@
         </encoder>
     </appender>
     <logger name="com.katesoft.gserver">
-        <level value="INFO" />
+        <level value="DEBUG" />
     </logger>
     <logger name="io.netty.util.internal.PlatformDependent">
         <level value="DEBUG" />

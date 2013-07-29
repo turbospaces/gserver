@@ -43,7 +43,6 @@ import com.katesoft.gserver.core.AbstractPlayer;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.NetworkCommandContext;
 import com.katesoft.gserver.domain.Entities.BetLimits;
-import com.katesoft.gserver.domain.Entities.Coin;
 import com.katesoft.gserver.domain.Entities.Coins;
 import com.katesoft.gserver.domain.Entities.i18n;
 import com.katesoft.gserver.domain.GameBO;
@@ -66,15 +65,18 @@ public abstract class AbstractPlatformContext implements PlatformContext {
     private final RedisUserDetailsService userDetailsService;
     private final RedisDomainRepository repository;
     private final RedisPersistentTokenBasedRememberMeServices rememberMeServices;
+    private final ConfigurationProvider configurationProvider;
 
     public AbstractPlatformContext(GamePlayContext ctx,
                                    CommandsQualifierCodec codec,
                                    RedisDomainRepository repository,
-                                   RedisPersistentTokenBasedRememberMeServices rememberMeServices) {
+                                   RedisPersistentTokenBasedRememberMeServices rememberMeServices,
+                                   ConfigurationProvider cfg) {
         this.ctx = ctx;
         this.codec = codec;
         this.repository = repository;
         this.rememberMeServices = rememberMeServices;
+        this.configurationProvider = cfg;
         this.userDetailsService = new RedisUserDetailsService( repository );
         this.chain = initChain();
     }
@@ -232,8 +234,8 @@ public abstract class AbstractPlatformContext implements PlatformContext {
             return ongoing.get();
         }
         else {
-            BetLimits blimits = BetLimits.newBuilder().setMaxBet( Short.MAX_VALUE ).setMinBet( 1 ).build();
-            Coins coins = Coins.newBuilder().addAllCoins( ImmutableSet.copyOf( Coin.values() ) ).build();
+            BetLimits blimits = configurationProvider.getBetLimits( gameBO, player );
+            Coins coins = configurationProvider.getCoins( gameBO, player );
 
             PlayerSession playerSession = player.openPlayerSession( sessionId, uc, game, gameBO, blimits, coins );
             logger.info( "PlayerSesion has been created = {}", playerSession );
