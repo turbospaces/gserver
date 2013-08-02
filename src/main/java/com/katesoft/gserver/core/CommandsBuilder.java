@@ -12,12 +12,7 @@ import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 
-public abstract class Commands {
-    /**
-     * create new protobuf extensions registry and fill platform commands inside.
-     * 
-     * @return protobuf extensions registry.
-     */
+public abstract class CommandsBuilder {
     public static ExtensionRegistry newMessageRegistry() {
         ExtensionRegistry registry = ExtensionRegistry.newInstance();
         com.katesoft.gserver.commands.Commands.registerAllExtensions( registry );
@@ -28,12 +23,9 @@ public abstract class Commands {
     }
     @SuppressWarnings({ "unchecked" })
     public static <T> BaseCommand toReply(BaseCommand cmd, CommandsQualifierCodec codec, GeneratedExtension<BaseCommand, T> extension, T reply) {
-        Builder builder = BaseCommand
-                .newBuilder()
-                .setProtocolVersion( cmd.getProtocolVersion() )
-                .setHeaders( cmd.getHeaders().toBuilder().setMessageTimestamp( currentTimeMillis() ).build() );
+        Builder builder = BaseCommand.newBuilder().setHeaders( cmd.getHeaders().toBuilder().setMessageTimestamp( currentTimeMillis() ).build() );
         builder.setExtension( extension, reply );
         return codec.encoder().apply( (Pair<Builder, GeneratedMessage>) ImmutablePair.of( builder, reply ) ).build();
     }
-    private Commands() {}
+    private CommandsBuilder() {}
 }

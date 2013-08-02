@@ -2,6 +2,7 @@ package com.katesoft.gserver.api;
 
 import java.io.Closeable;
 
+import com.katesoft.gserver.domain.Entities.ProtocolVersion;
 import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.misc.Misc;
 import com.katesoft.gserver.spi.PlatformContext;
@@ -13,11 +14,12 @@ public interface TransportServer<ChannelType> extends Closeable {
     UserConnection awaitForClientHandshake(ChannelType channel);
 
     public static class Util {
-        public static ServerSettings avail() {
+        public static ServerSettings avail(ProtocolVersion protocolVersion) {
             return ServerSettings
                     .newBuilder()
                     .setTcpBindAddress( "localhost:" + Misc.nextAvailablePort() )
                     .setWebsocketsBindAddress( "localhost:" + Misc.nextAvailablePort() )
+                    .setProtocolVersion( protocolVersion )
                     .build();
         }
     }

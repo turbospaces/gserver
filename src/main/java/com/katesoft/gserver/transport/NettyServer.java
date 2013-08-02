@@ -1,9 +1,6 @@
 package com.katesoft.gserver.transport;
 
-import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -19,8 +16,9 @@ import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.concurrent.DefaultThreadFactory;
 
-import java.net.SocketAddress;
+import java.util.concurrent.ThreadFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +35,19 @@ import com.katesoft.gserver.spi.PlatformContext;
 public class NettyServer implements TransportServer<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
-    private final EventLoopGroup eventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() );
+    private final EventLoopGroup tcpEventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() ) {
+        @Override
+        protected ThreadFactory newDefaultThreadFactory() {
+            return new DefaultThreadFactory( "tcp-pool", Thread.MAX_PRIORITY );
+        }
+    };
+    private final EventLoopGroup wsEventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() ) {
+        @Override
+        protected ThreadFactory newDefaultThreadFactory() {
+            return new DefaultThreadFactory( "websockets-pool", Thread.MAX_PRIORITY );
+        }
+    };
+
     private ChannelDispatchHandler root;
     private ServerSettings settings;
     private PlatformContext platform;
@@ -46,11 +56,11 @@ public class NettyServer implements TransportServer<SocketChannel> {
     public void startServer(final ServerSettings s, final PlatformContext ctx) {
         this.settings = s;
         this.platform = ctx;
-        root = new ChannelDispatchHandler( eventGroup, ctx );
+        root = new ChannelDispatchHandler( ctx, s );
 
         final ServerBootstrap tcpBootstrap = new ServerBootstrap();
         tcpBootstrap
-                .group( eventGroup )
+                .group( tcpEventGroup )
                 .channel( NioServerSocketChannel.class )
                 .handler( new LoggingHandler( LogLevel.DEBUG ) )
                 .childHandler( new ChannelInitializer<SocketChannel>() {
@@ -67,7 +77,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
         if ( settings.hasWebsocketsBindAddress() ) {
             final ServerBootstrap webSocksBootstap = new ServerBootstrap();
             webSocksBootstap
-                    .group( eventGroup )
+                    .group( wsEventGroup )
                     .channel( NioServerSocketChannel.class )
                     .handler( new LoggingHandler( LogLevel.DEBUG ) )
                     .childHandler( new ChannelInitializer<SocketChannel>() {
@@ -111,7 +121,8 @@ public class NettyServer implements TransportServer<SocketChannel> {
                     root.close();
                 }
                 finally {
-                    eventGroup.shutdownGracefully();
+                    tcpEventGroup.shutdownGracefully();
+                    wsEventGroup.shutdownGracefully();
                 }
             }
         } );
@@ -119,7 +130,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
     }
     @Override
     public UserConnection getUserConnection(String id) {
-        return root.find( id );
+        return root.get().get( id );
     }
     @Override
     public int connectionsCount() {
@@ -130,15 +141,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
     }
     @Override
     public UserConnection awaitForClientHandshake(SocketChannel clientChannel) {
-        for ( ;; ) {
-            for ( Channel c : root.get() ) {
-                SocketAddress remoteAddress = c.remoteAddress();
-                if ( clientChannel.localAddress().equals( remoteAddress ) ) {
-                    return root.find( (SocketChannel) c );
-                }
-            }
-            sleepUninterruptibly( 1, MILLISECONDS );
-        }
+        return root.awaitForClientHandshake( clientChannel );
     }
     public static ChannelPipeline registerProtobufCodecs(ChannelPipeline p, ExtensionRegistry registry) {
         p.addLast( "frameDecoder", new LengthFieldBasedFrameDecoder( 1048576, 0, 4, 0, 4 ) );

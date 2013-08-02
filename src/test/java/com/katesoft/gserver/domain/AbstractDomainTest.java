@@ -12,12 +12,15 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
 
+import com.katesoft.gserver.domain.Entities.ProtocolVersion;
 import com.katesoft.gserver.domain.support.RedisPersistentTokenBasedRememberMeServices;
 import com.katesoft.gserver.domain.support.RedisPersistentTokenRepository;
 import com.katesoft.gserver.domain.support.RedisUserDetailsService;
 import com.katesoft.gserver.misc.Misc;
 
 public abstract class AbstractDomainTest {
+    public static final ProtocolVersion PROTOCOL_VERSION = ProtocolVersion.newBuilder().setMajor( 0 ).setMinor( 1 ).build();
+
     protected static RedisPersistentTokenBasedRememberMeServices rememberMeServices;
     protected static JedisConnectionFactory cf;
     protected static StringRedisTemplate template;
@@ -77,12 +80,12 @@ public abstract class AbstractDomainTest {
         String tokenSeries = rememberMeServices.generateSeriesData();
         String tokenValue = rememberMeServices.generateTokenData();
         String rememberMe = rememberMeServices.encodeCookie( new String[] { tokenSeries, tokenValue } );
-        
+
         String loginToken = rememberMeServices.encodeWebsocketLoginToken( rememberMe ).getToken();
 
         PersistentRememberMeToken token = new PersistentRememberMeToken( userAccount.getUsername(), tokenSeries, tokenValue, new Date() );
         tokenRepo.createNewToken( token );
-        
+
         return loginToken;
     }
 }

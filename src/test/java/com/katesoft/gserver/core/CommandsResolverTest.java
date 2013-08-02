@@ -17,21 +17,18 @@ public class CommandsResolverTest {
     @SuppressWarnings({})
     @Test
     public void works() throws Exception {
-        ExtensionRegistry messageRegistry = Commands.newMessageRegistry();
+        ExtensionRegistry messageRegistry = CommandsBuilder.newMessageRegistry();
 
         CommandsQualifierCodec r = new CommandsQualifierCodec.ProtoCommandsCodec( messageRegistry );
         LoginCommand logCmd = LoginCommand.newBuilder().setToken( "tokenX" ).setClientPlatform( "flash" ).build();
         Builder bcmdb = BaseCommand.newBuilder();
-        bcmdb
-                .setProtocolVersion( "0.1" )
-                .setHeaders(
-                        MessageHeaders
-                                .newBuilder()
-                                .setCorrelationID( "corr-1" )
-                                .setMessageTimestamp( System.currentTimeMillis() )
-                                .setSequenceNumber( 1 )
-                                .build() )
-                .setExtension( LoginCommand.cmd, logCmd );
+        bcmdb.setHeaders(
+                MessageHeaders
+                        .newBuilder()
+                        .setCorrelationID( "corr-1" )
+                        .setMessageTimestamp( System.currentTimeMillis() )
+                        .setSequenceNumber( 1 )
+                        .build() ).setExtension( LoginCommand.cmd, logCmd );
         r.encoder().apply( ImmutablePair.of( bcmdb, (GeneratedMessage) logCmd ) );
 
         BaseCommand bcmd = bcmdb.build();

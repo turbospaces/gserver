@@ -4,11 +4,27 @@ option optimize_for = SPEED;
 option java_package = "com.katesoft.gserver.domain";
 option java_outer_classname = "Entities";
 
+message ProtocolVersion {
+	required uint32 major = 1;
+	optional uint32 minor = 2;
+	optional uint32 patch = 3;
+}
+
+//
+// i18n support
+//
 message i18n {
 	required string key = 1;
 	required string value = 2;
 }
-
+//
+//
+//
+enum NotificationType {
+	ERROR = 1;
+	INFO = 2;
+	WARNING = 3;
+}
 //
 // define most commonly used coins
 //
@@ -71,24 +87,22 @@ message PlayerSettings {
 }
 //
 // server settings.
-// 1) tcp-send-buffer size in bytes (netty optimization)
-// 2) tcp-receive-buffer size in bytes (netty optimization)
-// 3) tcp-socket-linger (netty socket settings)
-// x) tcp-sockets bind address (which host and port to use for direct TCP persistent connections).
-// x) flash-sockets bind address (which host and port to use for flash persistent connections).
-// x) web-sockets bind address (which host and port to use for flash persistent connections).
+// 1) protocol version (required)
+// 2) tcp-send-buffer size in bytes (netty optimization)
+// 3) tcp-receive-buffer size in bytes (netty optimization)
+// 4) tcp-socket-linger (netty socket settings)
+// 5) tcp-sockets bind address (which host and port to use for direct TCP persistent connections).
+// 6) web-sockets bind address (which host and port to use for flash persistent connections).
+// 7) flash-sockets bind address (which host and port to use for flash persistent connections).
+// 8) websockets-context-path (actual context path for web-sockets, similar to war context path).
 //
 message ServerSettings {
-	optional uint32 tcpSendBufferSize = 1 [default = 1048576];
-	optional uint32 tcpReceiveBufferSize = 2 [default = 1048576];
-	optional uint32 tcpSocketLinger = 3 [default = 2048];
-	optional string tcpBindAddress = 6 [default = '0.0.0.0:8190' ];
-	optional string websocketsBindAddress = 7 [default = '0.0.0.0:8191'];
-	optional string flashBindAddress = 8 [default = '0.0.0.0:8192'];
-
-	// how long generated websockets login token to be valid.
-	// by default valid for 30 minutes.
-	optional uint32 websocketLoginTokenExpiration = 4 [default = 108000];
-	// password to use in order to encrypt generated websockets login token.
-	optional string websocketLoginEncryptorPassword = 5 [default = 'wsLoginTokenEncryptor'];
+	required ProtocolVersion protocolVersion = 1;
+	optional uint32 tcpSendBufferSize = 2 [default = 1048576];
+	optional uint32 tcpReceiveBufferSize = 3 [default = 1048576];
+	optional uint32 tcpSocketLinger = 4 [default = 2048];
+	optional string tcpBindAddress = 5 [default = '0.0.0.0:8190' ];
+	optional string websocketsBindAddress = 6 [default = '0.0.0.0:8191'];
+	optional string flashBindAddress = 7 [default = '0.0.0.0:8192'];
+	optional string wsContextPath = 8 [default = '/websockets'];
 }

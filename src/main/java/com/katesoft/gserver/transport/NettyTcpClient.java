@@ -169,7 +169,7 @@ public class NettyTcpClient implements Runnable, TransportClient<SocketChannel> 
                 .setMessageTimestamp( System.currentTimeMillis() )
                 .setSequenceNumber( seqN )
                 .build();
-        cmd.setHeaders( headers ).setProtocolVersion( "1.0" );
+        cmd.setHeaders( headers );
         if ( sessionId != null ) {
             cmd.setSessionId( sessionId );
         }

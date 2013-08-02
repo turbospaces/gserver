@@ -22,8 +22,11 @@ import com.katesoft.gserver.api.GameCommand;
 import com.katesoft.gserver.api.Player;
 import com.katesoft.gserver.api.PlayerSession;
 import com.katesoft.gserver.api.UserConnection;
+import com.katesoft.gserver.commands.Commands.BalanceUpdateNotify;
+import com.katesoft.gserver.commands.Commands.ShowMessageNotify;
 import com.katesoft.gserver.domain.Entities.BetLimits;
 import com.katesoft.gserver.domain.Entities.Coins;
+import com.katesoft.gserver.domain.Entities.NotificationType;
 import com.katesoft.gserver.domain.GameBO;
 import com.katesoft.gserver.domain.UserAccountBO;
 
@@ -54,7 +57,16 @@ public abstract class AbstractPlayer implements Player {
     @Override
     public void updateBalance(BigDecimal amount) {
         this.balance = amount;
+        BalanceUpdateNotify notify = BalanceUpdateNotify.newBuilder().setBalance( amount.doubleValue() ).build();
         for ( PlayerSession ps : sessions.values() ) {
+            ps.getUserConnection().writeAsync( notify );
+        }
+    }
+    @Override
+    public void showUserMessage(String msg, NotificationType type) {
+        ShowMessageNotify notify = ShowMessageNotify.newBuilder().setMsg( msg ).setType( type ).build();
+        for ( PlayerSession ps : sessions.values() ) {
+            ps.getUserConnection().writeAsync( notify );
         }
     }
     // @formatter:off

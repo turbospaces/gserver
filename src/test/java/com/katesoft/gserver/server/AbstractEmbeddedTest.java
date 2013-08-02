@@ -46,6 +46,7 @@ import com.katesoft.gserver.commands.Commands.LoginCommand;
 import com.katesoft.gserver.commands.Commands.MessageHeaders;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayCommand;
 import com.katesoft.gserver.commands.Commands.OpenGamePlayReply;
+import com.katesoft.gserver.core.CommandsBuilder;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
 import com.katesoft.gserver.core.CommandsQualifierCodec.ProtoCommandsCodec;
 import com.katesoft.gserver.core.NetworkCommandContext;
@@ -67,12 +68,12 @@ import com.katesoft.gserver.transport.NettyTcpClient;
 
 public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
     public static final ScheduledExecutorService SCHEDULED_EXEC = newSingleThreadScheduledExecutor();
-    public static final ExtensionRegistry EXTENSION_REGISTRY = com.katesoft.gserver.core.Commands.newMessageRegistry();
+    public static final ExtensionRegistry EXTENSION_REGISTRY = CommandsBuilder.newMessageRegistry();
 
     protected static NettyServer s;
     protected static NettyTcpClient c;
     protected ConnectionType connectionType = ConnectionType.TCP;
-    protected ServerSettings settings = TransportServer.Util.avail();
+    protected ServerSettings settings = TransportServer.Util.avail( PROTOCOL_VERSION );
     protected PlatformContext ctx;
     protected Logger logger = LoggerFactory.getLogger( getClass() );
 
@@ -118,7 +119,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
                 .setSequenceNumber( (short) tmstmp )
                 .build();
 
-        Builder b = BaseCommand.newBuilder().setProtocolVersion( "1.0" ).setExtension( ext, t ).setHeaders( headers );
+        Builder b = BaseCommand.newBuilder().setExtension( ext, t ).setHeaders( headers );
         b = codec.encoder().apply( (Pair<Builder, GeneratedMessage>) ImmutablePair.of( b, t ) );
 
         NetworkCommandContext ctx = new NetworkCommandContext( b.build(), codec, ps.getUserConnection() );
@@ -128,7 +129,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
         login( c, loginToken );
     }
     protected static void login(NettyTcpClient client, String token) {
-        LoginCommand cmd = LoginCommand.newBuilder().setToken( token ).setClientPlatform( "flash" ).build();
+        LoginCommand cmd = LoginCommand.newBuilder().setToken( token ).setClientPlatform( "flash" ).setProtocolVersion( PROTOCOL_VERSION ).build();
         client.callAsync( LoginCommand.cmd, cmd, null );
     }
     protected CloseGamePlayAndLogoutReply logout(String sessionId) throws InterruptedException, ExecutionException {
@@ -205,6 +206,7 @@ public abstract class AbstractEmbeddedTest extends AbstractDomainTest {
                         .newBuilder()
                         .setTcpBindAddress( fromParts( "localhost", 8189 ).toString() )
                         .setWebsocketsBindAddress( fromParts( "localhost", 8190 ).toString() )
+                        .setProtocolVersion( PROTOCOL_VERSION )
                         .build(),
                 ctx );
         synchronized ( ms ) {

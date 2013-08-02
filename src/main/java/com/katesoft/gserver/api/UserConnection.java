@@ -8,21 +8,19 @@ import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.Atomics;
 import com.google.protobuf.Message;
 import com.katesoft.gserver.transport.ConnectionType;
 
 public interface UserConnection extends Closeable {
     String id();
+    String clientPlatform();
     InetSocketAddress remoteAddress();
-    Player asociatePlayer(Player p);
-    Player associatedPlayer();
+    Player player();
     Future<Void> writeAsync(Message message);
     void writeSync(Message message);
     ConnectionType connectionType();
@@ -35,13 +33,16 @@ public interface UserConnection extends Closeable {
      */
     @Override
     void close();
+    void asociatePlayer(Player p);
+    void setClientPlatform(String platform);
 
     public static class UserConnectionStub implements UserConnection {
         private final Logger logger = LoggerFactory.getLogger( getClass() );
 
         protected final String id;
         protected ConnectionType connectionType = ConnectionType.TCP;
-        protected final AtomicReference<Player> player = Atomics.newReference();
+        protected Player player;
+        protected String clientPlatform;
         protected final Set<Runnable> closeHooks = Sets.newCopyOnWriteArraySet();
 
         public UserConnectionStub() {
@@ -59,14 +60,20 @@ public interface UserConnection extends Closeable {
             return new InetSocketAddress( 1 );
         }
         @Override
-        public final Player asociatePlayer(Player p) {
-            Player prev = player.get();
-            player.compareAndSet( prev, p );
-            return prev;
+        public final void asociatePlayer(Player p) {
+            this.player = p;
         }
         @Override
-        public final Player associatedPlayer() {
-            return player.get();
+        public String clientPlatform() {
+            return clientPlatform;
+        }
+        @Override
+        public void setClientPlatform(String platform) {
+            this.clientPlatform = platform;
+        }
+        @Override
+        public final Player player() {
+            return player;
         }
         public void setConnectionType(ConnectionType connectionType) {
             this.connectionType = connectionType;

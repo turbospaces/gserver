@@ -2,7 +2,7 @@ package com.katesoft.gserver.spi;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static com.katesoft.gserver.core.Commands.toReply;
+import static com.katesoft.gserver.core.CommandsBuilder.toReply;
 import static com.katesoft.gserver.domain.RedisDomainRepository.required;
 
 import java.util.List;
@@ -110,6 +110,7 @@ public abstract class AbstractPlatformContext implements PlatformContext {
                 if ( LoginCommand.class == type ) {
                     LoginCommand login = cmd.getExtension( LoginCommand.cmd );
                     Player player = login( login.getToken() );
+                    uc.setClientPlatform( login.getClientPlatform() );
                     uc.asociatePlayer( player );
                     processed = PROCESSING_COMPLETE;
                 }
@@ -122,7 +123,7 @@ public abstract class AbstractPlatformContext implements PlatformContext {
                 }
                 else if ( OpenGamePlayCommand.class == type ) {
                     OpenGamePlayCommand openGamePlay = cmd.getExtension( OpenGamePlayCommand.cmd );
-                    Player player = uc.associatedPlayer();
+                    Player player = uc.player();
                     OpenGamePlayReply.Builder b = OpenGamePlayReply.newBuilder();
                     PlayerSessionBO playerSession = openPlayerSession( openGamePlay.getGameId(), player, uc, b );
 
@@ -139,7 +140,7 @@ public abstract class AbstractPlatformContext implements PlatformContext {
                 }
                 else if ( CloseGamePlayAndLogoutCommand.class == type ) {
                     CloseGamePlayAndLogoutCommand closeCommand = cmd.getExtension( CloseGamePlayAndLogoutCommand.cmd );
-                    Player player = uc.associatedPlayer();
+                    Player player = uc.player();
                     if ( player != null ) {
                         logout( player, cmd.getSessionId() );
                         if ( closeCommand.getForceCloseConnection() ) {
@@ -164,7 +165,7 @@ public abstract class AbstractPlatformContext implements PlatformContext {
                 }
                 else if ( UpdatePlayerSettingsCommand.class == type ) {
                     cmd.getExtension( UpdatePlayerSettingsCommand.cmd );
-                    uc.associatedPlayer();
+                    uc.player();
                 }
                 return processed;
             }
@@ -239,7 +240,7 @@ public abstract class AbstractPlatformContext implements PlatformContext {
 
             PlayerSession playerSession = player.openPlayerSession( sessionId, uc, game, gameBO, blimits, coins );
             logger.info( "PlayerSesion has been created = {}", playerSession );
-            PlayerSessionBO playerSessionBO = new PlayerSessionBO( playerSession );
+            PlayerSessionBO playerSessionBO = new PlayerSessionBO( playerSession, uc.clientPlatform() );
             repository.savePlayerSession( playerSessionBO );
             b.setReattached( false );
 

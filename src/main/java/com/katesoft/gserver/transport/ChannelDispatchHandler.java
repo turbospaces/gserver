@@ -1,14 +1,13 @@
 package com.katesoft.gserver.transport;
 
+import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 import static com.katesoft.gserver.core.Encryptors.encode;
 import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static java.lang.System.currentTimeMillis;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
@@ -25,13 +24,14 @@ import io.netty.util.concurrent.Future;
 
 import java.io.Closeable;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import javax.annotation.Nullable;
 
 import org.apache.commons.chain.Chain;
 import org.apache.commons.chain.impl.ChainBase;
@@ -42,9 +42,7 @@ import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 
-import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.protobuf.Message;
 import com.googlecode.protobuf.format.JsonFormat;
@@ -56,59 +54,63 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.core.Encryptors;
 import com.katesoft.gserver.core.NetworkCommandContext;
+import com.katesoft.gserver.domain.Entities.NotificationType;
+import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.spi.PlatformContext;
+import com.katesoft.gserver.transport.ChannelDispatchHandler.SocketUserConnection;
 
 @Sharable
-public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> implements Closeable, Supplier<ChannelGroup> {
+public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> implements Closeable,
+                                                                               Supplier<ConcurrentMap<String, SocketUserConnection>> {
     private static final Logger LOGGER = LoggerFactory.getLogger( ChannelDispatchHandler.class );
-    private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
-    private static AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
+    private static final AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
 
     private final TextEncryptor encryptor = Encryptors.textEncryptor( ChannelDispatchHandler.class.getName(), false );
     private final ConcurrentMap<String, SocketUserConnection> connections = Maps.newConcurrentMap();
-    private final ChannelGroup channelGroup;
-    private final AtomicLong increment;
-    private final PlatformContext platformInterface;
+    private final AtomicLong increment = new AtomicLong();
 
-    public ChannelDispatchHandler(EventLoopGroup eventGroup, PlatformContext platformInterface) {
+    private final PlatformContext platformInterface;
+    private final ServerSettings settings;
+
+    public ChannelDispatchHandler(PlatformContext platformInterface, ServerSettings s) {
         this.platformInterface = platformInterface;
-        this.increment = new AtomicLong();
-        this.channelGroup = new DefaultChannelGroup( eventGroup.next() );
+        this.settings = s;
     }
     @Override
-    public void channelActive(ChannelHandlerContext ctx) {
-        SocketChannel ch = (SocketChannel) ctx.channel();
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
         String id = encode( encryptor, String.valueOf( currentTimeMillis() ), String.valueOf( increment.getAndIncrement() ) );
-        SocketUserConnection uc = new SocketUserConnection( ch, id );
-        ch.attr( USER_CONNECTION_ATTR ).set( uc );
-        connections.put( id, uc );
-        channelGroup.add( ch );
+        {
+            SocketUserConnection uc = new SocketUserConnection( (SocketChannel) ctx.channel(), id );
+            SocketUserConnection.associateConnection( ctx, uc );
+            connections.put( id, uc );
+            LOGGER.info( "channel={} activated, corresponding UserConnection({})", ctx.channel(), uc.id() );
+        }
+        super.channelActive( ctx );
     }
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        SocketUserConnection c = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
+        SocketUserConnection c = SocketUserConnection.getConnection( ctx );
         LOGGER.error( String.format( "Unhandled exception occured in UserConnection=(%s) loop", c.id() ), cause );
         super.exceptionCaught( ctx, cause );
     }
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        SocketUserConnection c = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
+        SocketUserConnection c = SocketUserConnection.getConnection( ctx );
+        connections.remove( c.id() );
+        LOGGER.info( "channel={} close for UserConnection=({}). active connections left={}", ctx.channel(), c.id(), connections.size() );
         super.channelInactive( ctx );
-        LOGGER.info( "channel={} close for UserConnection=({}). active connections left={}", ctx.channel(), c.id(), get().size() );
     }
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-        SocketUserConnection userConnection = ctx.channel().attr( USER_CONNECTION_ATTR ).get();
+    protected void channelRead0(final ChannelHandlerContext ctx, final Object msg) throws Exception {
+        final SocketUserConnection userConnection = SocketUserConnection.getConnection( ctx );
         if ( msg instanceof BaseCommand ) {
             userConnection.setConnectionType( ConnectionType.TCP );
             onMessage( (BaseCommand) msg, userConnection, ctx );
         }
         else if ( msg instanceof FullHttpRequest ) {
             FullHttpRequest httpMsg = (FullHttpRequest) msg;
-            WebSocketServerHandshaker handshaker = new WebSocketServerHandshakerFactory(
-                    "ws://" + httpMsg.headers().get( HOST ) + "/websockets",
-                    null,
-                    false ).newHandshaker( httpMsg );
+            String url = "ws://" + httpMsg.headers().get( HOST ) + settings.getWsContextPath();
+            WebSocketServerHandshaker handshaker = new WebSocketServerHandshakerFactory( url, null, true ).newHandshaker( httpMsg );
             if ( handshaker == null ) {
                 WebSocketServerHandshakerFactory.sendUnsupportedWebSocketVersionResponse( ctx.channel() );
             }
@@ -121,13 +123,13 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
         else if ( msg instanceof WebSocketFrame ) {
             WebSocketFrame frame = (WebSocketFrame) msg;
             if ( frame instanceof CloseWebSocketFrame ) {
-                frame.retain();
+                CloseWebSocketFrame f = (CloseWebSocketFrame) frame.retain();
                 Attribute<WebSocketServerHandshaker> attr = ctx.channel().attr( WS_HANDSHAKER_ATTR );
                 if ( attr != null ) {
                     WebSocketServerHandshaker wsHandshaker = attr.get();
                     try {
                         if ( wsHandshaker != null ) {
-                            wsHandshaker.close( ctx.channel(), (CloseWebSocketFrame) frame );
+                            wsHandshaker.close( ctx.channel(), f );
                             LOGGER.debug( "ws connection({}) closed", userConnection.id() );
                         }
                     }
@@ -137,8 +139,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                 }
             }
             else if ( frame instanceof PingWebSocketFrame ) {
-                frame.content().retain();
-                ctx.channel().write( new PongWebSocketFrame( frame.content() ) );
+                ctx.channel().write( new PongWebSocketFrame( frame.content().retain() ) );
                 return;
             }
             else if ( frame instanceof TextWebSocketFrame ) {
@@ -147,6 +148,12 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                 Builder bcmdb = BaseCommand.newBuilder();
                 JsonFormat.merge( text, platformInterface.commandsCodec().extensionRegistry(), bcmdb );
                 onMessage( bcmdb.build(), userConnection, ctx );
+                ctx.executor().schedule( new Runnable() {
+                    @Override
+                    public void run() {
+                        userConnection.player().showUserMessage( "XXX", NotificationType.INFO );
+                    }
+                }, 1, TimeUnit.SECONDS );
             }
             else if ( frame instanceof BinaryWebSocketFrame ) {
                 byte[] data = frame.content().array();
@@ -166,130 +173,120 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
             }
         }
     }
-    @Override
-    public ChannelGroup get() {
-        return channelGroup;
-    }
-    UserConnection find(String id) {
-        return connections.get( id );
-    }
-    UserConnection find(final SocketChannel sch) {
-        return Iterables.find( connections.values(), new Predicate<SocketUserConnection>() {
-            @Override
-            public boolean apply(@Nullable SocketUserConnection input) {
-                return input.get() == sch;
-            }
-        } ).get().attr( USER_CONNECTION_ATTR ).get();
-    }
-    protected void onMessage(final BaseCommand cmd, final SocketUserConnection uc, final ChannelHandlerContext channelCtx) {
-        uc.inboundCommands.offer( cmd );
-
-        try {
-            BaseCommand poll = null;
-            ReentrantLock lock = uc.cmdLock;
-            if ( lock.isLocked() ) {
-                LOGGER.warn(
-                        "Locking EventLoop({}) due to slow inbound messages processing(size={})!",
-                        uc.get().eventLoop(),
-                        uc.inboundCommands.size() );
-            }
-            lock.lock();
-            try {
-                while ( ( poll = uc.inboundCommands.poll() ) != null ) {
-                    LOGGER.debug( "onMessage(connection={})={}", uc.id(), poll );
-
-                    // ~~~ build chain ~~~
-                    NetworkCommandContext ncmd = new NetworkCommandContext( cmd, platformInterface.commandsCodec(), uc );
-                    Chain chain = new ChainBase();
-                    chain.addCommand( platformInterface.platformCommandsInterpreter() );
-                    if ( uc.associatedPlayer() != null ) {
-                        chain.addCommand( uc.associatedPlayer() );
-                    }
-
-                    // ~~~ execute command ~~~
-                    // ~~~ catch common exceptions ~~~
-                    try {
-                        ncmd.recognizeCmd();
-                        boolean processed = chain.execute( ncmd );
-                        if ( !processed ) {
-                            throw new AbstractProtocolException.UnknownCommadException( cmd );
-                        }
-                    }
-                    catch ( AbstractProtocolException ex ) {
-                        LOGGER.error( String.format( "ProtocolException=UUID[%s], msg=%s", ex.getUuid().toString(), ex.getMessage() ), ex );
-                        uc.writeAsync( com.katesoft.gserver.commands.Commands.Exception
-                                .newBuilder()
-                                .setHeaders( ncmd.getCmd().getHeaders() )
-                                .setMsg( ex.getMessage() )
-                                .setQualifier( ex.getClass().getName() )
-                                .setStacktrace( ExceptionUtils.getStackTrace( ex ) )
-                                .setUuid( ex.getUuid().toString() )
-                                .build() );
-                    }
-                    catch ( DataRetrievalFailureException ex ) {
-                        LOGGER.error( ex.getMessage(), ex );
-                        throw ex;
-                    }
-                    catch ( ConcurrencyFailureException ex ) {
-                        LOGGER.error( ex.getMessage(), ex );
-                        throw ex;
-                    }
-                    catch ( DeadConnectionException ex ) {
-                        LOGGER.error( ex.getMessage(), ex );
-                        LOGGER.error( "closing connection = {} due to failed game login procedure", uc );
-                        uc.close();
-                    }
-                    catch ( Throwable ex ) {
-                        LOGGER.error( ex.getMessage(), ex );
-                    }
+    public UserConnection awaitForClientHandshake(SocketChannel clientChannel) {
+        for ( ;; ) {
+            for ( SocketUserConnection c : connections.values() ) {
+                SocketAddress remoteAddress = c.remoteAddress();
+                if ( clientChannel.localAddress().equals( remoteAddress ) ) {
+                    return c;
                 }
             }
-            finally {
-                lock.unlock();
+            sleepUninterruptibly( 1, MILLISECONDS );
+        }
+    }
+    @Override
+    public ConcurrentMap<String, SocketUserConnection> get() {
+        return connections;
+    }
+    protected void onMessage(BaseCommand cmd, final SocketUserConnection uc, ChannelHandlerContext ctx) {
+        uc.inboundCommands.add( cmd );
+
+        BaseCommand poll = null;
+        Lock lock = uc.cmdLock;
+        lock.lock();
+        try {
+            while ( ( poll = (BaseCommand) uc.inboundCommands.poll() ) != null ) {
+                LOGGER.debug( "onMessage(connection={})={}", uc.id(), poll );
+
+                // ~~~ build chain ~~~
+                NetworkCommandContext ncmd = new NetworkCommandContext( poll, platformInterface.commandsCodec(), uc );
+                Chain chain = new ChainBase();
+                chain.addCommand( platformInterface.platformCommandsInterpreter() );
+                if ( uc.player() != null ) {
+                    chain.addCommand( uc.player() );
+                }
+
+                // ~~~ execute command ~~~
+                // ~~~ catch common exceptions ~~~
+                try {
+                    ncmd.recognizeCmd();
+                    boolean processed = chain.execute( ncmd );
+                    if ( !processed ) {
+                        throw new AbstractProtocolException.UnknownCommadException( poll );
+                    }
+                }
+                catch ( AbstractProtocolException ex ) {
+                    LOGGER.error( String.format( "ProtocolException=UUID[%s], msg=%s", ex.getUuid().toString(), ex.getMessage() ), ex );
+                    uc.writeAsync( com.katesoft.gserver.commands.Commands.Exception
+                            .newBuilder()
+                            .setHeaders( ncmd.getCmd().getHeaders() )
+                            .setMsg( ex.getMessage() )
+                            .setQualifier( ex.getClass().getName() )
+                            .setStacktrace( ExceptionUtils.getStackTrace( ex ) )
+                            .setUuid( ex.getUuid().toString() )
+                            .build() );
+                }
+                catch ( DataRetrievalFailureException ex ) {
+                    LOGGER.error( ex.getMessage(), ex );
+                    throw ex;
+                }
+                catch ( ConcurrencyFailureException ex ) {
+                    LOGGER.error( ex.getMessage(), ex );
+                    throw ex;
+                }
+                catch ( DeadConnectionException ex ) {
+                    LOGGER.error( ex.getMessage(), ex );
+                    LOGGER.error( "closing connection = {} due to failed game login procedure", uc );
+                    uc.close();
+                }
+                catch ( Throwable ex ) {
+                    LOGGER.error( ex.getMessage(), ex );
+                }
             }
         }
         finally {
-            channelCtx.flush();
+            lock.unlock();
         }
     }
 
-    static final class SocketUserConnection extends UserConnectionStub implements Supplier<SocketChannel> {
-        private final SocketChannel ch;
-        private final Queue<BaseCommand> inboundCommands = new ConcurrentLinkedQueue<BaseCommand>();
+    static final class SocketUserConnection extends UserConnectionStub {
+        private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
+
+        private final SocketChannel channel;
+        private final Queue<Message> inboundCommands = new ConcurrentLinkedQueue<Message>();
+        private final Queue<Message> outboundCommands = new ConcurrentLinkedQueue<Message>();
         private final ReentrantLock cmdLock = new ReentrantLock();
 
         public SocketUserConnection(SocketChannel ch, String id) {
             super( id );
-            this.ch = ch;
+            this.channel = ch;
         }
         @Override
         public InetSocketAddress remoteAddress() {
-            return ch.remoteAddress();
-        }
-        @Override
-        public SocketChannel get() {
-            return ch;
+            return channel.remoteAddress();
         }
         @Override
         public Future<Void> writeAsync(Message message) {
+            outboundCommands.add( message );
             Future<Void> f = null;
+            Object toSend = message;
             switch ( connectionType ) {
                 case TCP: {
                     LOGGER.debug( "sending TCP response={}", message );
-                    f = ch.write( message );
                     break;
                 }
                 case WEBSOCKETS: {
                     String json = JsonFormat.printToString( message );
+                    toSend = new TextWebSocketFrame( json );
                     LOGGER.debug( "sending ws response={}", json );
-                    f = ch.write( new TextWebSocketFrame( json ) );
                     break;
                 }
-                case FLASH:
+                case FLASH: {
                     LOGGER.debug( "sending flash response={}", message );
-                    f = ch.write( message );
                     break;
+                }
             }
+            f = channel.writeAndFlush( toSend );
             return f;
         }
         @Override
@@ -298,7 +295,13 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
         }
         @Override
         public void close() {
-            ch.close().awaitUninterruptibly();
+            channel.close().awaitUninterruptibly();
+        }
+        public static void associateConnection(ChannelHandlerContext ctx, SocketUserConnection uc) {
+            ctx.channel().attr( USER_CONNECTION_ATTR ).set( uc );
+        }
+        public static SocketUserConnection getConnection(ChannelHandlerContext ctx) {
+            return ctx.channel().attr( USER_CONNECTION_ATTR ).get();
         }
     }
 }

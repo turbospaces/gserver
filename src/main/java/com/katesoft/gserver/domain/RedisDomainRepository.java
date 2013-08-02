@@ -76,6 +76,7 @@ public class RedisDomainRepository {
                 ops.put( "game_id", playerSession.game.getPrimaryKey() );
                 ops.put( "bet_limits", JsonFormat.printToString( playerSession.betLimits ) );
                 ops.put( "coins", JsonFormat.printToString( playerSession.coins ) );
+                ops.put( "client_platform", playerSession.clientPlatform );
                 return null;
             }
         } );
@@ -157,6 +158,7 @@ public class RedisDomainRepository {
                     String sessionId = ops.get( "session_id" );
                     String connectionId = ops.get( "user_connection_id" );
                     String userId = ops.get( "user_id" );
+                    String clientPlatform = ops.get( "client_platform" );
                     GameBO game = findGame( ops.get( "game_id" ) ).get();
 
                     BetLimits.Builder betLimits = BetLimits.newBuilder();
@@ -165,7 +167,7 @@ public class RedisDomainRepository {
                     JsonFormat.merge( ops.get( "bet_limits" ), betLimits );
                     JsonFormat.merge( ops.get( "coins" ), coins );
 
-                    return new PlayerSessionBO( sessionId, userId, connectionId, betLimits.build(), coins.build(), game );
+                    return new PlayerSessionBO( sessionId, userId, connectionId, betLimits.build(), coins.build(), game, clientPlatform );
                 }
                 catch ( ParseException e ) {
                     Throwables.propagate( e );

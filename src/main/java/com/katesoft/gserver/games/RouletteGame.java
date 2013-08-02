@@ -2,7 +2,7 @@ package com.katesoft.gserver.games;
 
 import static com.google.common.base.Objects.toStringHelper;
 import static com.google.common.primitives.Ints.asList;
-import static com.katesoft.gserver.core.Commands.toReply;
+import static com.katesoft.gserver.core.CommandsBuilder.toReply;
 import static com.katesoft.gserver.games.RouletteGame.PositionAndPayout.of;
 import static com.katesoft.gserver.games.roulette.RoulleteCommands.RouletteBetPosition.*;
 

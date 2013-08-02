@@ -16,16 +16,13 @@ message MessageHeaders {
 // Base command defines:
 // 1) qualifier - fully/shortly qualified name of the command (i.e. 'login' or 'your.namespace.logincommand').
 // 2) headers - transport level attributes.
-// 3) protocolVersion - defines which protocol is being used on client side(server may want not be backwards compatible).
-// 4) sessionId - if the user started game play, the game play will be always bound to session context.
-// 5) debug - enable excessive command processing logging on server and command level.
+// 3) sessionId - if the user started game play, the game play will be always bound to session context.
 //
 message BaseCommand {
 	extensions 100 to max;
 	required string qualifier = 1;
 	required MessageHeaders headers = 2;
-	required string protocolVersion = 3;
-	optional string sessionId = 4;
+	optional string sessionId = 3;
 }
 //
 // Exception defines:
@@ -55,7 +52,8 @@ message LoginCommand {
 	extend BaseCommand {
 		required LoginCommand cmd = 100;
 	}
-	required string token = 1;
+	required gserver.ProtocolVersion protocolVersion = 1;
+	required string token = 2;
 	required string clientPlatform = 3;
 	optional string lang = 4;
 }
@@ -146,11 +144,15 @@ message OpenGamePlayReply {
 	required string displayName = 7;
 }
 //
-// updates user balance.
+//
 //
 message BalanceUpdateNotify {
-	extend BaseCommand {
-		required OpenGamePlayReply cmd = 112;
-	}
 	required double balance = 1;
+}
+//
+//
+//
+message ShowMessageNotify {
+	required string msg = 1;
+	required gserver.NotificationType type = 2;
 }

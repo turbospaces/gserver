@@ -58,7 +58,7 @@ public class DomainRepositoryTest extends AbstractDomainTest {
         BetLimits blimits = BetLimits.newBuilder().setMaxBet( Short.MAX_VALUE ).setMinBet( 1 ).build();
         Coins coins = Coins.newBuilder().addAllCoins( ImmutableSet.copyOf( Coin.values() ) ).build();
 
-        PlayerSessionBO playerSession = new PlayerSessionBO( "session-x", "player-x", "connection-x", blimits, coins, game );
+        PlayerSessionBO playerSession = new PlayerSessionBO( "session-x", "player-x", "connection-x", blimits, coins, game, "Mozilla 3.0" );
         repo.savePlayerSession( playerSession );
         PlayerSessionBO clone = repo.findPlayerSession( playerSession.getPrimaryKey() ).get();
         assertTrue( EqualsBuilder.reflectionEquals( playerSession, clone, false ) );

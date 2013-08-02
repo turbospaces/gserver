@@ -8,6 +8,7 @@ import org.apache.commons.chain.Context;
 
 import com.katesoft.gserver.domain.Entities.BetLimits;
 import com.katesoft.gserver.domain.Entities.Coins;
+import com.katesoft.gserver.domain.Entities.NotificationType;
 import com.katesoft.gserver.domain.GameBO;
 
 public interface Player extends Closeable, Command {
@@ -15,12 +16,15 @@ public interface Player extends Closeable, Command {
     String displayName();
     BigDecimal balance();
     void updateBalance(BigDecimal amount);
+    void showUserMessage(String msg, NotificationType type);
+    // @formatter:off
     PlayerSession openPlayerSession(String sessionId,
                                     UserConnection uc,
                                     Game game,
                                     GameBO gameBO,
                                     BetLimits blimits,
                                     Coins coins);
+    // @formatter:on
     /**
      * close all player sessions gracefully(method called upon user logout command).
      */
