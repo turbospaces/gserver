@@ -60,10 +60,10 @@ import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.spi.PlatformContext;
 
 @Sharable
-public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
-                                                                               implements
-                                                                               Closeable,
-                                                                               Supplier<ConcurrentMap<String, ChannelDispatchHandler.SocketUserConnection>> {
+public class ChannelDispatchHandler2 extends SimpleChannelInboundHandler<Object>
+                                                                                implements
+                                                                                Closeable,
+                                                                                Supplier<ConcurrentMap<String, ChannelDispatchHandler2.SocketUserConnection>> {
     private static final Logger LOGGER = LoggerFactory.getLogger( ChannelDispatchHandler.class );
     private static final AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
 
@@ -74,7 +74,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
     private final PlatformContext platformInterface;
     private final ServerSettings settings;
 
-    public ChannelDispatchHandler(PlatformContext platformInterface, ServerSettings s) {
+    public ChannelDispatchHandler2(PlatformContext platformInterface, ServerSettings s) {
         this.platformInterface = platformInterface;
         this.settings = s;
     }
