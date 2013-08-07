@@ -1,5 +1,6 @@
 package com.katesoft.gserver.transport;
 
+import static com.google.common.util.concurrent.Uninterruptibles.getUninterruptibly;
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 import static com.katesoft.gserver.core.Encryptors.encode;
 import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
@@ -20,7 +21,6 @@ import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
-import io.netty.util.concurrent.Future;
 
 import java.io.Closeable;
 import java.net.InetSocketAddress;
@@ -28,7 +28,8 @@ import java.net.SocketAddress;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -43,6 +44,7 @@ import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 
 import com.google.common.base.Supplier;
+import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
 import com.google.protobuf.Message;
 import com.googlecode.protobuf.format.JsonFormat;
@@ -54,7 +56,6 @@ import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.commands.Commands.BaseCommand.Builder;
 import com.katesoft.gserver.core.Encryptors;
 import com.katesoft.gserver.core.NetworkCommandContext;
-import com.katesoft.gserver.domain.Entities.NotificationType;
 import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.spi.PlatformContext;
 import com.katesoft.gserver.transport.ChannelDispatchHandler.SocketUserConnection;
@@ -105,7 +106,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
         final SocketUserConnection userConnection = SocketUserConnection.getConnection( ctx );
         if ( msg instanceof BaseCommand ) {
             userConnection.setConnectionType( ConnectionType.TCP );
-            onMessage( (BaseCommand) msg, userConnection, ctx );
+            onMessage( (BaseCommand) msg, userConnection );
         }
         else if ( msg instanceof FullHttpRequest ) {
             FullHttpRequest httpMsg = (FullHttpRequest) msg;
@@ -147,18 +148,12 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                 LOGGER.debug( "ws({})={}", userConnection.id(), text );
                 Builder bcmdb = BaseCommand.newBuilder();
                 JsonFormat.merge( text, platformInterface.commandsCodec().extensionRegistry(), bcmdb );
-                onMessage( bcmdb.build(), userConnection, ctx );
-                ctx.executor().schedule( new Runnable() {
-                    @Override
-                    public void run() {
-                        userConnection.player().showUserMessage( "XXX", NotificationType.INFO );
-                    }
-                }, 1, TimeUnit.SECONDS );
+                onMessage( bcmdb.build(), userConnection );
             }
             else if ( frame instanceof BinaryWebSocketFrame ) {
                 byte[] data = frame.content().array();
                 BaseCommand bcmd = BaseCommand.parseFrom( data, platformInterface.commandsCodec().extensionRegistry() );
-                onMessage( bcmd, userConnection, ctx );
+                onMessage( bcmd, userConnection );
             }
         }
     }
@@ -188,7 +183,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
     public ConcurrentMap<String, SocketUserConnection> get() {
         return connections;
     }
-    protected void onMessage(BaseCommand cmd, final SocketUserConnection uc, ChannelHandlerContext ctx) {
+    protected void onMessage(BaseCommand cmd, final SocketUserConnection uc) {
         uc.inboundCommands.add( cmd );
 
         BaseCommand poll = null;
@@ -246,6 +241,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
         }
         finally {
             lock.unlock();
+            uc.channel.flush();
         }
     }
 
@@ -254,7 +250,6 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
 
         private final SocketChannel channel;
         private final Queue<Message> inboundCommands = new ConcurrentLinkedQueue<Message>();
-        private final Queue<Message> outboundCommands = new ConcurrentLinkedQueue<Message>();
         private final ReentrantLock cmdLock = new ReentrantLock();
 
         public SocketUserConnection(SocketChannel ch, String id) {
@@ -267,8 +262,6 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
         }
         @Override
         public Future<Void> writeAsync(Message message) {
-            outboundCommands.add( message );
-            Future<Void> f = null;
             Object toSend = message;
             switch ( connectionType ) {
                 case TCP: {
@@ -286,12 +279,17 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                     break;
                 }
             }
-            f = channel.writeAndFlush( toSend );
-            return f;
+            System.out.println( channel.eventLoop().inEventLoop() );
+            return channel.write( toSend );
         }
         @Override
         public void writeSync(Message message) {
-            writeAsync( message ).awaitUninterruptibly();
+            try {
+                getUninterruptibly( writeAsync( message ) );
+            }
+            catch ( ExecutionException e ) {
+                Throwables.propagate( e );
+            }
         }
         @Override
         public void close() {

@@ -35,19 +35,12 @@ import com.katesoft.gserver.spi.PlatformContext;
 public class NettyServer implements TransportServer<SocketChannel> {
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
-    private final EventLoopGroup tcpEventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() ) {
+    private final EventLoopGroup eventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() ) {
         @Override
         protected ThreadFactory newDefaultThreadFactory() {
-            return new DefaultThreadFactory( "tcp-pool", Thread.MAX_PRIORITY );
+            return new DefaultThreadFactory( "I/O-pool", Thread.MAX_PRIORITY );
         }
     };
-    private final EventLoopGroup wsEventGroup = new NioEventLoopGroup( Runtime.getRuntime().availableProcessors() ) {
-        @Override
-        protected ThreadFactory newDefaultThreadFactory() {
-            return new DefaultThreadFactory( "websockets-pool", Thread.MAX_PRIORITY );
-        }
-    };
-
     private ChannelDispatchHandler root;
     private ServerSettings settings;
     private PlatformContext platform;
@@ -60,7 +53,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
 
         final ServerBootstrap tcpBootstrap = new ServerBootstrap();
         tcpBootstrap
-                .group( tcpEventGroup )
+                .group( eventGroup )
                 .channel( NioServerSocketChannel.class )
                 .handler( new LoggingHandler( LogLevel.DEBUG ) )
                 .childHandler( new ChannelInitializer<SocketChannel>() {
@@ -77,7 +70,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
         if ( settings.hasWebsocketsBindAddress() ) {
             final ServerBootstrap webSocksBootstap = new ServerBootstrap();
             webSocksBootstap
-                    .group( wsEventGroup )
+                    .group( eventGroup )
                     .channel( NioServerSocketChannel.class )
                     .handler( new LoggingHandler( LogLevel.DEBUG ) )
                     .childHandler( new ChannelInitializer<SocketChannel>() {
@@ -121,8 +114,7 @@ public class NettyServer implements TransportServer<SocketChannel> {
                     root.close();
                 }
                 finally {
-                    tcpEventGroup.shutdownGracefully();
-                    wsEventGroup.shutdownGracefully();
+                    eventGroup.shutdownGracefully();
                 }
             }
         } );
