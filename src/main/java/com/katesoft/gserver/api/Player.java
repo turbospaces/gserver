@@ -18,6 +18,7 @@ public interface Player extends Closeable, Command {
     void updateBalance(BigDecimal amount);
     void showUserMessage(String msg, NotificationType type);
     // @formatter:off
+    void renewPlayerSession(String sessionId, UserConnection uc);
     PlayerSession openPlayerSession(String sessionId,
                                     UserConnection uc,
                                     Game game,

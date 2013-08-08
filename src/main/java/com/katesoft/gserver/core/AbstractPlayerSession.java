@@ -11,12 +11,12 @@ import com.katesoft.gserver.domain.GameBO;
 
 public abstract class AbstractPlayerSession implements PlayerSession {
     private final String sessionId;
-    private final UserConnection userConnection;
     private final Game game;
     private final GameBO gameDefinition;
     private final Player player;
     private final BetLimits betLimits;
     private final Coins coins;
+    private UserConnection userConnection;
 
     public AbstractPlayerSession(String sessionId,
                                  UserConnection userConnection,
@@ -64,6 +64,9 @@ public abstract class AbstractPlayerSession implements PlayerSession {
     @Override
     public void close() {
         getGame().close();
+    }
+    public void setUserConnection(UserConnection userConnection) {
+        this.userConnection = userConnection;
     }
     @Override
     public String toString() {

@@ -7,12 +7,12 @@ import java.io.Closeable;
 import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.Message;
 import com.katesoft.gserver.transport.ConnectionType;
 
@@ -21,7 +21,7 @@ public interface UserConnection extends Closeable {
     String clientPlatform();
     InetSocketAddress remoteAddress();
     Player player();
-    Future<Void> writeAsync(Message message);
+    ListenableFuture<Object> writeAsync(Message message);
     void writeSync(Message message);
     ConnectionType connectionType();
     void addConnectionCloseHook(Runnable r);
@@ -87,10 +87,9 @@ public interface UserConnection extends Closeable {
             closeHooks.add( r );
         }
         @Override
-        public Future<Void> writeAsync(Message message) {
+        public ListenableFuture<Object> writeAsync(Message message) {
             logger.trace( "writing reply={} async", message );
-            Void v = null;
-            return immediateCheckedFuture( v );
+            return immediateCheckedFuture( (Object) message );
         }
         @Override
         public void writeSync(Message message) {

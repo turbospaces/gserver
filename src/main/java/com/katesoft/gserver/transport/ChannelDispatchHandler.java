@@ -6,6 +6,9 @@ import static com.katesoft.gserver.core.Encryptors.encode;
 import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -25,11 +28,11 @@ import io.netty.util.AttributeKey;
 import java.io.Closeable;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -43,9 +46,12 @@ import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 
+import com.google.common.base.Function;
 import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.Message;
 import com.googlecode.protobuf.format.JsonFormat;
 import com.katesoft.gserver.api.AbstractProtocolException;
@@ -60,16 +66,15 @@ import com.katesoft.gserver.domain.Entities.ServerSettings;
 import com.katesoft.gserver.spi.PlatformContext;
 
 @Sharable
-public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
-                                                                               implements
-                                                                               Closeable,
-                                                                               Supplier<ConcurrentMap<String, ChannelDispatchHandler.SocketUserConnection>> {
+public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> implements Closeable,
+                                                                               Supplier<Map<String, ChannelDispatchHandler.SocketUserConnection>> {
     private static final Logger LOGGER = LoggerFactory.getLogger( ChannelDispatchHandler.class );
     private static final AttributeKey<WebSocketServerHandshaker> WS_HANDSHAKER_ATTR = new AttributeKey<WebSocketServerHandshaker>( "x-ws-handshaker" );
 
     private final TextEncryptor encryptor = Encryptors.textEncryptor( ChannelDispatchHandler.class.getName(), false );
-    private final ConcurrentMap<String, SocketUserConnection> connections = Maps.newConcurrentMap();
     private final AtomicLong increment = new AtomicLong();
+    private final ConcurrentMap<Channel, SocketUserConnection> channels = Maps.newConcurrentMap();
+    private final ConcurrentMap<String, Channel> connections = Maps.newConcurrentMap();
 
     private final PlatformContext platformInterface;
     private final ServerSettings settings;
@@ -79,35 +84,37 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
         this.settings = s;
     }
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(final ChannelHandlerContext ctx) throws Exception {
         String id = encode( encryptor, String.valueOf( currentTimeMillis() ), String.valueOf( increment.getAndIncrement() ) );
-        {
-            SocketUserConnection uc = new SocketUserConnection( (SocketChannel) ctx.channel(), id );
-            SocketUserConnection.associateConnection( ctx, uc );
-            connections.put( id, uc );
-            LOGGER.info( "channel={} activated, corresponding UserConnection({})", ctx.channel(), uc.id() );
-        }
+        LOGGER.info( "channel={} activated, corresponding UserConnection({})", ctx.channel(), id );
+
+        SocketUserConnection uc = new SocketUserConnection( (SocketChannel) ctx.channel(), id );
+        connections.put( id, ctx.channel() );
+        channels.put( ctx.channel(), uc );
+
         super.channelActive( ctx );
     }
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        SocketUserConnection c = SocketUserConnection.getConnection( ctx );
-        LOGGER.error( String.format( "Unhandled exception occured in UserConnection=(%s) loop", c.id() ), cause );
+        SocketUserConnection uc = channels.get( ctx.channel() );
+        LOGGER.error( String.format( "Unhandled exception occured in UserConnection=(%s) loop", uc.id() ), cause );
         super.exceptionCaught( ctx, cause );
     }
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        SocketUserConnection c = SocketUserConnection.getConnection( ctx );
-        connections.remove( c.id() );
-        LOGGER.info( "channel={} close for UserConnection=({}). active connections left={}", ctx.channel(), c.id(), connections.size() );
-        super.channelInactive( ctx );
+    public void channelInactive(final ChannelHandlerContext ctx) {
+        SocketUserConnection uc = channels.get( ctx.channel() );
+
+        connections.remove( uc.id() );
+        channels.remove( ctx.channel() );
+
+        LOGGER.info( "channel={} close for UserConnection=({}). active connections left={}", ctx.channel(), uc.id(), connections.size() );
     }
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final Object msg) throws Exception {
-        final SocketUserConnection userConnection = SocketUserConnection.getConnection( ctx );
+        SocketUserConnection uc = channels.get( ctx.channel() );
         if ( msg instanceof BaseCommand ) {
-            userConnection.setConnectionType( ConnectionType.TCP );
-            onMessage( (BaseCommand) msg, userConnection, ctx );
+            uc.setConnectionType( ConnectionType.TCP );
+            onMessage( (BaseCommand) msg, uc, ctx );
         }
         else if ( msg instanceof FullHttpRequest ) {
             FullHttpRequest httpMsg = (FullHttpRequest) msg;
@@ -120,7 +127,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
                 handshaker.handshake( ctx.channel(), httpMsg );
                 ctx.channel().attr( WS_HANDSHAKER_ATTR ).set( handshaker );
             }
-            userConnection.setConnectionType( ConnectionType.WEBSOCKETS );
+            uc.setConnectionType( ConnectionType.WEBSOCKETS );
         }
         else if ( msg instanceof WebSocketFrame ) {
             WebSocketFrame frame = (WebSocketFrame) msg;
@@ -132,7 +139,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
                     try {
                         if ( wsHandshaker != null ) {
                             wsHandshaker.close( ctx.channel(), f );
-                            LOGGER.debug( "ws connection({}) closed", userConnection.id() );
+                            LOGGER.debug( "ws connection({}) closed", uc.id() );
                         }
                     }
                     finally {
@@ -146,21 +153,21 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
             }
             else if ( frame instanceof TextWebSocketFrame ) {
                 String text = ( (TextWebSocketFrame) frame ).text();
-                LOGGER.debug( "ws({})={}", userConnection.id(), text );
+                LOGGER.debug( "ws({})={}", uc.id(), text );
                 Builder bcmdb = BaseCommand.newBuilder();
                 JsonFormat.merge( text, platformInterface.commandsCodec().extensionRegistry(), bcmdb );
-                onMessage( bcmdb.build(), userConnection, ctx );
+                onMessage( bcmdb.build(), uc, ctx );
             }
             else if ( frame instanceof BinaryWebSocketFrame ) {
                 byte[] data = frame.content().array();
                 BaseCommand bcmd = BaseCommand.parseFrom( data, platformInterface.commandsCodec().extensionRegistry() );
-                onMessage( bcmd, userConnection, ctx );
+                onMessage( bcmd, uc, ctx );
             }
         }
     }
     @Override
     public void close() {
-        for ( UserConnection userConnection : connections.values() ) {
+        for ( UserConnection userConnection : channels.values() ) {
             try {
                 userConnection.close();
             }
@@ -171,7 +178,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
     }
     public UserConnection awaitForClientHandshake(SocketChannel clientChannel) {
         for ( ;; ) {
-            for ( SocketUserConnection c : connections.values() ) {
+            for ( SocketUserConnection c : channels.values() ) {
                 SocketAddress remoteAddress = c.remoteAddress();
                 if ( clientChannel.localAddress().equals( remoteAddress ) ) {
                     return c;
@@ -181,12 +188,16 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
         }
     }
     @Override
-    public ConcurrentMap<String, SocketUserConnection> get() {
-        return connections;
+    public Map<String, SocketUserConnection> get() {
+        return Maps.toMap( connections.keySet(), new Function<String, SocketUserConnection>() {
+            @Override
+            public SocketUserConnection apply(String input) {
+                return channels.get( connections.get( input ) );
+            }
+        } );
     }
     protected void onMessage(BaseCommand cmd, final SocketUserConnection uc, ChannelHandlerContext ctx) {
         uc.inboundCommands.add( cmd );
-        SocketUserConnection.CTX.set( ctx );
 
         BaseCommand poll = null;
         Lock lock = uc.cmdLock;
@@ -243,15 +254,11 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
         }
         finally {
             lock.unlock();
-            ctx.flush();
-            SocketUserConnection.CTX.remove();
+            uc.channel.flush();
         }
     }
 
     static final class SocketUserConnection extends UserConnectionStub {
-        private static ThreadLocal<ChannelHandlerContext> CTX = new ThreadLocal<ChannelHandlerContext>();
-        private static AttributeKey<SocketUserConnection> USER_CONNECTION_ATTR = new AttributeKey<SocketUserConnection>( "x-user-connection" );
-
         private final SocketChannel channel;
         private final Queue<Message> inboundCommands = new ConcurrentLinkedQueue<Message>();
         private final ReentrantLock cmdLock = new ReentrantLock();
@@ -265,7 +272,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
             return channel.remoteAddress();
         }
         @Override
-        public Future<Void> writeAsync(Message message) {
+        public ListenableFuture<Object> writeAsync(Message message) {
             Object toSend = message;
             switch ( connectionType ) {
                 case TCP: {
@@ -283,9 +290,24 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
                     break;
                 }
             }
-            System.out.println( channel.eventLoop().inEventLoop() );
-            return CTX.get().write( toSend );
-            // return channel.write( toSend );
+            final SettableFuture<Object> f = SettableFuture.create();
+            final Object obj = toSend;
+
+            System.out.println( channel );
+            System.out.println( this );
+            channel.write( obj ).addListener( new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) {
+                    if ( !future.isSuccess() ) {
+                        LOGGER.error( "AsyncWrite failed to channel={} due to={}", future.channel(), future.cause().getClass() );
+                        f.setException( future.cause() );
+                    }
+                    else {
+                        f.set( obj );
+                    }
+                }
+            } );
+            return f;
         }
         @Override
         public void writeSync(Message message) {
@@ -299,12 +321,6 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object>
         @Override
         public void close() {
             channel.close().awaitUninterruptibly();
-        }
-        public static void associateConnection(ChannelHandlerContext ctx, SocketUserConnection uc) {
-            ctx.channel().attr( USER_CONNECTION_ATTR ).set( uc );
-        }
-        public static SocketUserConnection getConnection(ChannelHandlerContext ctx) {
-            return ctx.channel().attr( USER_CONNECTION_ATTR ).get();
         }
     }
 }

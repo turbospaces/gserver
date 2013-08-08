@@ -69,6 +69,13 @@ public abstract class AbstractPlayer implements Player {
             ps.getUserConnection().writeAsync( notify );
         }
     }
+    @Override
+    public void renewPlayerSession(String sessionId, UserConnection uc) {
+        PlayerSession playerSession = sessions.get( sessionId );
+        if ( playerSession instanceof AbstractPlayerSession ) {
+            ( (AbstractPlayerSession) playerSession ).setUserConnection( uc );
+        }
+    }
     // @formatter:off
     @Override
     public PlayerSession openPlayerSession(String sessionId,

@@ -1,7 +1,6 @@
 package com.katesoft.gserver.api;
 
-import java.util.concurrent.Future;
-
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.GeneratedMessage;
 import com.katesoft.gserver.commands.Commands.BaseCommand;
 import com.katesoft.gserver.core.CommandsQualifierCodec;
@@ -62,7 +61,7 @@ public final class GameCommand {
     public boolean isAcknowledged() {
         return acknowledged;
     }
-    public Future<Void> replyAsync(BaseCommand reply) {
+    public ListenableFuture<Object> replyAsync(BaseCommand reply) {
         try {
             return playerSession.getUserConnection().writeAsync( reply );
         }

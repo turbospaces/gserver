@@ -232,6 +232,7 @@ public abstract class AbstractPlatformContext implements PlatformContext {
         if ( ongoing.isPresent() ) {
             logger.info( "Attaching game play to existing Player Session = {}", ongoing.get().sessionId );
             b.setReattached( true );
+            player.renewPlayerSession( sessionId, uc );
             return ongoing.get();
         }
         else {
