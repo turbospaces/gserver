@@ -114,7 +114,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
         SocketUserConnection uc = channels.get( ctx.channel() );
         if ( msg instanceof BaseCommand ) {
             uc.setConnectionType( ConnectionType.TCP );
-            onMessage( (BaseCommand) msg, uc, ctx );
+            onMessage( (BaseCommand) msg, uc );
         }
         else if ( msg instanceof FullHttpRequest ) {
             FullHttpRequest httpMsg = (FullHttpRequest) msg;
@@ -156,12 +156,12 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                 LOGGER.debug( "ws({})={}", uc.id(), text );
                 Builder bcmdb = BaseCommand.newBuilder();
                 JsonFormat.merge( text, platformInterface.commandsCodec().extensionRegistry(), bcmdb );
-                onMessage( bcmdb.build(), uc, ctx );
+                onMessage( bcmdb.build(), uc );
             }
             else if ( frame instanceof BinaryWebSocketFrame ) {
                 byte[] data = frame.content().array();
                 BaseCommand bcmd = BaseCommand.parseFrom( data, platformInterface.commandsCodec().extensionRegistry() );
-                onMessage( bcmd, uc, ctx );
+                onMessage( bcmd, uc );
             }
         }
     }
@@ -196,7 +196,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
             }
         } );
     }
-    protected void onMessage(BaseCommand cmd, final SocketUserConnection uc, ChannelHandlerContext ctx) {
+    protected void onMessage(final BaseCommand cmd, final SocketUserConnection uc) {
         uc.inboundCommands.add( cmd );
 
         BaseCommand poll = null;
@@ -272,7 +272,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
             return channel.remoteAddress();
         }
         @Override
-        public ListenableFuture<Object> writeAsync(Message message) {
+        public ListenableFuture<Object> writeAsync(final Message message) {
             Object toSend = message;
             switch ( connectionType ) {
                 case TCP: {
@@ -293,8 +293,6 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
             final SettableFuture<Object> f = SettableFuture.create();
             final Object obj = toSend;
 
-            System.out.println( channel );
-            System.out.println( this );
             channel.write( obj ).addListener( new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) {
@@ -307,6 +305,7 @@ public class ChannelDispatchHandler extends SimpleChannelInboundHandler<Object> 
                     }
                 }
             } );
+
             return f;
         }
         @Override
